@@ -32,7 +32,7 @@ Le projet s’inscrit dans la thématique de l’économie digitale, du futur du
 
 - 👤 Gestion des utilisateurs  
 - 💡 Gestion des projets (proposition d’idées de startups)  
-- 💰 Gestion des finances  
+- 🧑‍💼 Gestion des ressources humaines (RH)  
 - 💬 Forum de discussion  
 - 📅 Gestion des événements  
 - 📚 Gestion des ressources et formations  
@@ -65,7 +65,7 @@ Le projet suit l’architecture **MVC (Model / View / Controller)** :
 ## 👥 Membres du groupe
 
 - Mohamed Gahgouh — Gestion des utilisateurs  
-- Youssef Boussetta — Gestion des finances  
+- Youssef Boussetta — Gestion des ressources humaines (RH)  
 - Firas Mbarki — Gestion des projets  
 - Achref Barrani — Gestion du forum  
 - Roua Aloui — Gestion des événements  
