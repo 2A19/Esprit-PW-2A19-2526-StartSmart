@@ -1,0 +1,15 @@
+# Simple .htaccess for StartSmart HR
+# Remove this file's .htaccess extension to use
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /StartSmartrh/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php?page=$1 [QSA,L]
+</IfModule>
+
+# Basic security
+<FilesMatch "\.sql$|\.env$">
+    Deny from all
+</FilesMatch>

@@ -1,0 +1,26 @@
+[16-Apr-2026 11:55:03 Europe/Berlin] PHP Warning:  Undefined variable $keyword in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 14
+[16-Apr-2026 11:55:03 Europe/Berlin] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 14
+[16-Apr-2026 11:55:03 Europe/Berlin] PHP Warning:  Undefined variable $totalCount in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 25
+[16-Apr-2026 11:55:03 Europe/Berlin] PHP Warning:  Undefined variable $departments in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 28
+[16-Apr-2026 11:55:03 Europe/Berlin] PHP Warning:  foreach() argument must be of type array|object, null given in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 28
+[16-Apr-2026 11:56:16 Europe/Berlin] PHP Warning:  Undefined variable $keyword in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 14
+[16-Apr-2026 11:56:16 Europe/Berlin] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 14
+[16-Apr-2026 11:56:16 Europe/Berlin] PHP Warning:  Undefined variable $totalCount in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 25
+[16-Apr-2026 11:56:16 Europe/Berlin] PHP Warning:  Undefined variable $departments in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 28
+[16-Apr-2026 11:56:16 Europe/Berlin] PHP Warning:  foreach() argument must be of type array|object, null given in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 28
+[16-Apr-2026 11:57:26 Europe/Berlin] PHP Warning:  Undefined variable $keyword in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 14
+[16-Apr-2026 11:57:26 Europe/Berlin] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 14
+[16-Apr-2026 11:57:26 Europe/Berlin] PHP Warning:  Undefined variable $totalCount in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 25
+[16-Apr-2026 11:57:26 Europe/Berlin] PHP Warning:  Undefined variable $departments in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 28
+[16-Apr-2026 11:57:26 Europe/Berlin] PHP Warning:  foreach() argument must be of type array|object, null given in C:\xampp\htdocs\StartSmartrh\views\backend\employees.php on line 28
+[16-Apr-2026 11:58:13 Europe/Berlin] PHP Warning:  Undefined variable $keyword in C:\xampp\htdocs\StartSmartrh\views\frontend\jobs.php on line 11
+[16-Apr-2026 11:58:13 Europe/Berlin] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\StartSmartrh\views\frontend\jobs.php on line 11
+[16-Apr-2026 11:58:13 Europe/Berlin] PHP Warning:  Undefined variable $location in C:\xampp\htdocs\StartSmartrh\views\frontend\jobs.php on line 15
+[16-Apr-2026 11:58:13 Europe/Berlin] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\StartSmartrh\views\frontend\jobs.php on line 15
+[16-Apr-2026 12:06:14 Europe/Berlin] PHP Fatal error:  Cannot redeclare ApplicationController::updateStatus() in C:\xampp\htdocs\StartSmartrh\controllers\ApplicationController.php on line 352
+[16-Apr-2026 12:22:03 Europe/Berlin] PHP Warning:  Undefined array key "email" in C:\xampp\htdocs\StartSmartrh\views\frontend\job-detail.php on line 46
+[16-Apr-2026 12:22:03 Europe/Berlin] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\StartSmartrh\views\frontend\job-detail.php on line 46
+[16-Apr-2026 12:22:18 Europe/Berlin] PHP Warning:  Undefined array key "title" in C:\xampp\htdocs\StartSmartrh\views\backend\dashboard.php on line 72
+[16-Apr-2026 12:22:18 Europe/Berlin] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\StartSmartrh\views\backend\dashboard.php on line 72
+[16-Apr-2026 12:22:51 Europe/Berlin] PHP Warning:  Undefined array key "title" in C:\xampp\htdocs\StartSmartrh\views\backend\dashboard.php on line 72
+[16-Apr-2026 12:22:51 Europe/Berlin] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in C:\xampp\htdocs\StartSmartrh\views\backend\dashboard.php on line 72
