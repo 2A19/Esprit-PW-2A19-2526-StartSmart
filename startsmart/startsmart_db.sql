@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS startups (
     id                  INT AUTO_INCREMENT PRIMARY KEY,
+    user_id             INT DEFAULT NULL,
     nom_startup         VARCHAR(200) NOT NULL,
     nom_responsable     VARCHAR(100) NOT NULL,
     prenom_responsable  VARCHAR(100) NOT NULL,
@@ -41,20 +42,21 @@ CREATE TABLE IF NOT EXISTS startups (
     stade               ENUM('idee','prototype','mvp','croissance','scale') DEFAULT 'idee',
     statut              ENUM('actif','inactif','verifie') DEFAULT 'actif',
     date_inscription    DATETIME     DEFAULT CURRENT_TIMESTAMP,
-    derniere_connexion  DATETIME     DEFAULT NULL
+    derniere_connexion  DATETIME     DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
 -- Données de test  (mot de passe en clair : Test1234!)
 -- Le hash bcrypt ci-dessous correspond à "Test1234!"
 -- ------------------------------------------------------------
-INSERT INTO users (nom, prenom, email, password, telephone, role, statut) VALUES
+INSERT IGNORE INTO users (nom, prenom, email, password, telephone, role, statut) VALUES
 ('Ben Ali',  'Ahmed', 'ahmed@email.com',       '$2y$10$YourHashHere.replaceMe', '55123456', 'user',  'actif'),
 ('Trabelsi', 'Sonia', 'sonia@email.com',       '$2y$10$YourHashHere.replaceMe', '22987654', 'user',  'actif'),
 ('Mansouri', 'Karim', 'karim@email.com',       '$2y$10$YourHashHere.replaceMe', '99456123', 'user',  'inactif'),
 ('Admin',    'Super', 'admin@startsmart.com',  '$2y$10$YourHashHere.replaceMe', NULL,       'admin', 'actif');
 
-INSERT INTO startups (nom_startup, nom_responsable, prenom_responsable, email, password, telephone, secteur, stade, statut) VALUES
+INSERT IGNORE INTO startups (nom_startup, nom_responsable, prenom_responsable, email, password, telephone, secteur, stade, statut) VALUES
 ('TechTunisia', 'Chaabane', 'Mehdi', 'contact@techtunisia.tn', '$2y$10$YourHashHere.replaceMe', '55001122', 'Technologie', 'mvp',       'verifie'),
 ('GreenAgri',   'Hamdi',    'Leila', 'info@greenagri.tn',      '$2y$10$YourHashHere.replaceMe', '22334455', 'Agriculture', 'prototype', 'actif'),
 ('EduBridge',   'Sassi',    'Omar',  'hello@edubridge.tn',     '$2y$10$YourHashHere.replaceMe', NULL,       'Education',   'idee',      'actif');
@@ -62,5 +64,6 @@ INSERT INTO startups (nom_startup, nom_responsable, prenom_responsable, email, p
 -- NOTE : après import, exécutez generate_hashes.php une fois
 -- pour générer les vrais hash bcrypt dans la table.
 
-CREATE INDEX idx_users_email   ON users(email);
-CREATE INDEX idx_startup_email ON startups(email);
+CREATE INDEX idx_users_email    ON users(email);
+CREATE INDEX idx_startup_email  ON startups(email);
+CREATE INDEX idx_startup_user   ON startups(user_id);

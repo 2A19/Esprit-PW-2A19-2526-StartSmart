@@ -357,21 +357,28 @@ class UserController
         ]);
     }
 
-    // ── DATABASE: READ ALL STARTUPS ────────────────────────────
+    // ── DATABASE: READ ALL STARTUPS (WITH USER JOIN) ────────────
     private function readAllStartups(int $limit = 10, int $offset = 0, string $statut = '', string $search = ''): array
     {
-        $sql = "SELECT * FROM startups WHERE 1=1";
+        $sql = "SELECT 
+                    s.id, s.user_id, s.nom_startup, s.nom_responsable, s.prenom_responsable, 
+                    s.email, s.telephone, s.secteur, s.site_web, s.stade, s.statut, 
+                    s.date_inscription, s.derniere_connexion,
+                    u.nom as user_nom, u.prenom as user_prenom, u.email as user_email
+                FROM startups s
+                LEFT JOIN users u ON s.user_id = u.id
+                WHERE 1=1";
         
         if ($statut) {
-            $sql .= " AND statut = '" . $this->clean($statut) . "'";
+            $sql .= " AND s.statut = '" . $this->clean($statut) . "'";
         }
         
         if ($search) {
             $clean = $this->clean($search);
-            $sql .= " AND (nom_startup LIKE '%$clean%' OR email LIKE '%$clean%')";
+            $sql .= " AND (s.nom_startup LIKE '%$clean%' OR s.email LIKE '%$clean%' OR u.nom LIKE '%$clean%' OR u.prenom LIKE '%$clean%')";
         }
         
-        $sql .= " ORDER BY id DESC LIMIT :limit OFFSET :offset";
+        $sql .= " ORDER BY s.id DESC LIMIT :limit OFFSET :offset";
         
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
@@ -397,10 +404,19 @@ class UserController
         return (int)$this->db->query($sql)->fetchColumn();
     }
 
-    // ── DATABASE: READ ONE STARTUP ─────────────────────────────
+    // ── DATABASE: READ ONE STARTUP (WITH USER JOIN) ────────────
     private function readOneStartup(int $id): ?array
     {
-        $stmt = $this->db->prepare("SELECT * FROM startups WHERE id = :id LIMIT 1");
+        $sql = "SELECT 
+                    s.id, s.user_id, s.nom_startup, s.nom_responsable, s.prenom_responsable, 
+                    s.email, s.telephone, s.secteur, s.site_web, s.stade, s.statut, 
+                    s.date_inscription, s.derniere_connexion,
+                    u.nom as user_nom, u.prenom as user_prenom, u.email as user_email
+                FROM startups s
+                LEFT JOIN users u ON s.user_id = u.id
+                WHERE s.id = :id LIMIT 1";
+        
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
         return $stmt->fetch() ?: null;
     }
@@ -597,6 +613,68 @@ class UserController
         } else {
             $_SESSION['form_errors'] = ['general' => 'Erreur lors de la suppression.'];
         }
+    }
+
+    // ── DATABASE: JOIN STARTUPS WITH USERS ─────────────────────
+    private function readAllStartupsWithUsers(int $limit = 10, int $offset = 0, string $statut = '', string $search = ''): array
+    {
+        $sql = "SELECT 
+                    s.id, s.user_id, s.nom_startup, s.nom_responsable, s.prenom_responsable, 
+                    s.email, s.telephone, s.secteur, s.site_web, s.stade, s.statut, 
+                    s.date_inscription, s.derniere_connexion,
+                    u.id as user_id_link, u.nom as user_nom, u.prenom as user_prenom, u.email as user_email
+                FROM startups s
+                LEFT JOIN users u ON s.user_id = u.id
+                WHERE 1=1";
+        
+        if ($statut) {
+            $sql .= " AND s.statut = '" . $this->clean($statut) . "'";
+        }
+        
+        if ($search) {
+            $clean = $this->clean($search);
+            $sql .= " AND (s.nom_startup LIKE '%$clean%' OR s.email LIKE '%$clean%' OR u.nom LIKE '%$clean%')";
+        }
+        
+        $sql .= " ORDER BY s.id DESC LIMIT :limit OFFSET :offset";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    // ── DATABASE: READ ONE STARTUP WITH USER ────────────────────
+    private function readOneStartupWithUser(int $id): ?array
+    {
+        $sql = "SELECT 
+                    s.id, s.user_id, s.nom_startup, s.nom_responsable, s.prenom_responsable, 
+                    s.email, s.telephone, s.secteur, s.site_web, s.stade, s.statut, 
+                    s.date_inscription, s.derniere_connexion,
+                    u.id as user_id_link, u.nom as user_nom, u.prenom as user_prenom, u.email as user_email
+                FROM startups s
+                LEFT JOIN users u ON s.user_id = u.id
+                WHERE s.id = :id LIMIT 1";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        return $stmt->fetch() ?: null;
+    }
+
+    // ── DATABASE: GET STARTUPS BY USER ─────────────────────────
+    private function readStartupsByUser(int $user_id): array
+    {
+        $sql = "SELECT 
+                    s.id, s.user_id, s.nom_startup, s.nom_responsable, s.prenom_responsable, 
+                    s.email, s.secteur, s.site_web, s.stade, s.statut, s.date_inscription
+                FROM startups s
+                WHERE s.user_id = :user_id
+                ORDER BY s.date_inscription DESC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':user_id' => $user_id]);
+        return $stmt->fetchAll();
     }
 
 }
