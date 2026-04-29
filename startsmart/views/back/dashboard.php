@@ -21,6 +21,9 @@ $startups_list = $_SESSION['startups_list'] ?? [];
 $form_errors = $_SESSION['form_errors'] ?? [];
 $success = $_SESSION['success'] ?? '';
 $form_data = $_SESSION['form_data'] ?? [];
+$current_sort = $_GET['sort'] ?? 'id DESC';
+$search_term = $_GET['search'] ?? '';
+
 
 // Load user/startup for editing if requested
 $user_detail = null;
@@ -58,6 +61,8 @@ unset($_SESSION['form_errors'], $_SESSION['success'], $_SESSION['form_data'], $_
 .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
 .table-container table { width: 100%; border-collapse: collapse; }
 .table-container th { background: #f5f5f5; padding: 1rem; text-align: left; font-weight: 600; border-bottom: 2px solid #eee; }
+.table-container th[onclick] { background: #efefef; }
+.table-container th[onclick]:hover { background: #e0e0e0; }
 .table-container td { padding: 1rem; border-bottom: 1px solid #eee; }
 .table-container tr:hover { background: #f9f9f9; }
 .action-btn { padding: 0.5rem 1rem; margin: 0 0.25rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
@@ -87,9 +92,15 @@ unset($_SESSION['form_errors'], $_SESSION['success'], $_SESSION['form_data'], $_
   <nav style="padding: 1rem 0;">
     <button onclick="switchTab('users')" style="width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; font-size: 0.95rem; color: rgba(255,255,255,0.8); transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'" id="users-tab">👥 Utilisateurs</button>
     <button onclick="switchTab('startups')" style="width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; font-size: 0.95rem; color: rgba(255,255,255,0.8); transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'" id="startups-tab">🚀 Startups</button>
+    <button onclick="openModal('profileModal')" style="width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; font-size: 0.95rem; color: rgba(255,255,255,0.8); transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">👤 Mon Profil</button>
   </nav>
   <div style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto;">
     <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 6px; text-align: center;">
+      <?php if($_SESSION['user_photo'] ?? null): ?>
+      <img src="<?= htmlspecialchars($_SESSION['user_photo']) ?>" alt="Photo" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin-bottom: 0.5rem; display: block; margin-left: auto; margin-right: auto;">
+      <?php else: ?>
+      <div style="width: 60px; height: 60px; border-radius: 50%; background: #555; margin: 0 auto 0.5rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">👤</div>
+      <?php endif; ?>
       <div style="font-weight: 600; margin-bottom: 0.5rem; color: white;"><?= htmlspecialchars($adminName) ?></div>
       <form method="POST" action="../../api/auth.php?action=logout" style="margin: 0;">
         <button type="submit" style="background: none; border: none; color: #87CEEB; cursor: pointer; text-decoration: underline; font-size: 0.9rem;">Déconnexion</button>
@@ -107,6 +118,20 @@ unset($_SESSION['form_errors'], $_SESSION['success'], $_SESSION['form_data'], $_
     
     <button class="btn-primary" onclick="openModal('createUserModal')">+ Nouvel Utilisateur</button>
     
+    <div style="margin-top: 1rem; display: flex; gap: 1rem; align-items: flex-end;">
+      <div style="flex: 1;">
+        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Rechercher:</label>
+        <form method="GET" style="display: flex; gap: 0.5rem;">
+          <input type="hidden" name="tab" value="users">
+          <input type="text" name="search" value="<?= htmlspecialchars($search_term) ?>" placeholder="Nom, Prénom, Email..." style="flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px;">
+          <button type="submit" style="padding: 0.75rem 1.5rem; background: #2196F3; color: white; border: none; border-radius: 6px; cursor: pointer;">Chercher</button>
+          <?php if($search_term): ?>
+          <a href="?tab=users" style="padding: 0.75rem 1.5rem; background: #999; color: white; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: flex; align-items: center;">Réinitialiser</a>
+          <?php endif; ?>
+        </form>
+      </div>
+    </div>
+    
     <?php if(!empty($form_errors)): ?>
     <div class="error">
       <?php foreach($form_errors as $field => $msg): ?>
@@ -119,11 +144,11 @@ unset($_SESSION['form_errors'], $_SESSION['success'], $_SESSION['form_data'], $_
       <table>
         <thead>
           <tr>
-            <th>Nom</th>
-            <th>Prénom</th>
-            <th>Email</th>
-            <th>Rôle</th>
-            <th>Statut</th>
+            <th style="cursor: pointer; user-select: none;" onclick="sortUsers('nom')">Nom <?= (strpos($current_sort, 'nom') !== false ? (strpos($current_sort, 'ASC') ? '▲' : '▼') : '') ?></th>
+            <th style="cursor: pointer; user-select: none;" onclick="sortUsers('prenom')">Prénom <?= (strpos($current_sort, 'prenom') !== false ? (strpos($current_sort, 'ASC') ? '▲' : '▼') : '') ?></th>
+            <th style="cursor: pointer; user-select: none;" onclick="sortUsers('email')">Email <?= (strpos($current_sort, 'email') !== false ? (strpos($current_sort, 'ASC') ? '▲' : '▼') : '') ?></th>
+            <th style="cursor: pointer; user-select: none;" onclick="sortUsers('role')">Rôle <?= (strpos($current_sort, 'role') !== false ? (strpos($current_sort, 'ASC') ? '▲' : '▼') : '') ?></th>
+            <th style="cursor: pointer; user-select: none;" onclick="sortUsers('statut')">Statut <?= (strpos($current_sort, 'statut') !== false ? (strpos($current_sort, 'ASC') ? '▲' : '▼') : '') ?></th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -157,15 +182,29 @@ unset($_SESSION['form_errors'], $_SESSION['success'], $_SESSION['form_data'], $_
   <div id="startups-section" class="admin-section <?= $tab === 'startups' ? 'active' : '' ?>">
     <h2>Startups</h2>
 
+    <div style="margin-top: 1rem; display: flex; gap: 1rem; align-items: flex-end;">
+      <div style="flex: 1;">
+        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Rechercher:</label>
+        <form method="GET" style="display: flex; gap: 0.5rem;">
+          <input type="hidden" name="tab" value="startups">
+          <input type="text" name="search" value="<?= htmlspecialchars($search_term) ?>" placeholder="Nom startup, Responsable, Email..." style="flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px;">
+          <button type="submit" style="padding: 0.75rem 1.5rem; background: #2196F3; color: white; border: none; border-radius: 6px; cursor: pointer;">Chercher</button>
+          <?php if($search_term): ?>
+          <a href="?tab=startups" style="padding: 0.75rem 1.5rem; background: #999; color: white; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: flex; align-items: center;">Réinitialiser</a>
+          <?php endif; ?>
+        </form>
+      </div>
+    </div>
+
     <div class="table-container">
       <table>
         <thead>
           <tr>
-            <th>Nom</th>
-            <th>Responsable</th>
-            <th>Email</th>
-            <th>Secteur</th>
-            <th>Statut</th>
+            <th style="cursor: pointer; user-select: none;" onclick="sortStartups('nom_startup')">Nom <?= (strpos($current_sort, 'nom_startup') !== false ? (strpos($current_sort, 'ASC') ? '▲' : '▼') : '') ?></th>
+            <th style="cursor: pointer; user-select: none;" onclick="sortStartups('nom_responsable')">Responsable <?= (strpos($current_sort, 'nom_responsable') !== false ? (strpos($current_sort, 'ASC') ? '▲' : '▼') : '') ?></th>
+            <th style="cursor: pointer; user-select: none;" onclick="sortStartups('email')">Email <?= (strpos($current_sort, 'email') !== false ? (strpos($current_sort, 'ASC') ? '▲' : '▼') : '') ?></th>
+            <th style="cursor: pointer; user-select: none;" onclick="sortStartups('secteur')">Secteur <?= (strpos($current_sort, 'secteur') !== false ? (strpos($current_sort, 'ASC') ? '▲' : '▼') : '') ?></th>
+            <th style="cursor: pointer; user-select: none;" onclick="sortStartups('statut')">Statut <?= (strpos($current_sort, 'statut') !== false ? (strpos($current_sort, 'ASC') ? '▲' : '▼') : '') ?></th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -195,6 +234,32 @@ unset($_SESSION['form_errors'], $_SESSION['success'], $_SESSION['form_data'], $_
     </div>
   </div>
 </main>
+
+<!-- PROFILE MODAL -->
+<div id="profileModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Mon Profil</h3>
+      <button class="modal-close" onclick="closeModal('profileModal')">×</button>
+    </div>
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <?php if($_SESSION['user_photo'] ?? null): ?>
+      <img id="profileImg" src="<?= htmlspecialchars($_SESSION['user_photo']) ?>" alt="Photo" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #2196F3;">
+      <?php else: ?>
+      <div id="profileImg" style="width: 120px; height: 120px; border-radius: 50%; background: #ddd; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 3rem;">👤</div>
+      <?php endif; ?>
+    </div>
+    <form id="profileUploadForm">
+      <div class="form-group">
+        <label>Photo de profil</label>
+        <input type="file" id="profilePhoto" accept="image/*">
+        <span class="field-error" id="photo-error" style="display: none;"></span>
+      </div>
+      <button type="button" class="btn-primary" style="width: 100%;" onclick="uploadProfilePhoto()">Mettre à jour la photo</button>
+    </form>
+    <div id="uploadMessage" style="margin-top: 1rem; display: none;"></div>
+  </div>
+</div>
 
 <!-- CREATE USER MODAL -->
 <div id="createUserModal" class="modal">
@@ -297,10 +362,44 @@ unset($_SESSION['form_errors'], $_SESSION['success'], $_SESSION['form_data'], $_
           <input type="tel" name="telephone" value="<?= htmlspecialchars($form_data['telephone'] ?? $user_detail['telephone'] ?? '') ?>">
         </div>
         <div class="form-group">
-          <label>Date de naissance</label>
-          <input type="date" name="date_naissance" value="<?= htmlspecialchars($form_data['date_naissance'] ?? $user_detail['date_naissance'] ?? '') ?>">
+          <label><?= ($user_detail['role'] === 'startup') ? 'Secteur' : 'Date de naissance' ?></label>
+          <?php if ($user_detail['role'] === 'startup'): ?>
+            <input type="text" name="secteur" value="<?= htmlspecialchars($form_data['secteur'] ?? $user_detail['secteur'] ?? '') ?>">
+          <?php else: ?>
+            <input type="date" name="date_naissance" value="<?= htmlspecialchars($form_data['date_naissance'] ?? $user_detail['date_naissance'] ?? '') ?>">
+          <?php endif; ?>
         </div>
       </div>
+      <?php if ($user_detail['role'] === 'startup'): ?>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Site Web</label>
+          <input type="url" name="site_web" value="<?= htmlspecialchars($form_data['site_web'] ?? $user_detail['site_web'] ?? '') ?>">
+        </div>
+        <div class="form-group">
+          <label>Stade</label>
+          <select name="stade">
+            <option value="idee" <?= ($form_data['stade'] ?? $user_detail['stade']) === 'idee' ? 'selected' : '' ?>>Idée</option>
+            <option value="prototype" <?= ($form_data['stade'] ?? $user_detail['stade']) === 'prototype' ? 'selected' : '' ?>>Prototype</option>
+            <option value="mvp" <?= ($form_data['stade'] ?? $user_detail['stade']) === 'mvp' ? 'selected' : '' ?>>MVP</option>
+            <option value="croissance" <?= ($form_data['stade'] ?? $user_detail['stade']) === 'croissance' ? 'selected' : '' ?>>Croissance</option>
+            <option value="scale" <?= ($form_data['stade'] ?? $user_detail['stade']) === 'scale' ? 'selected' : '' ?>>Scale</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Nom de la Startup *</label>
+        <input type="text" name="nom_startup" value="<?= htmlspecialchars($form_data['nom_startup'] ?? $user_detail['nom_startup'] ?? '') ?>" required>
+      </div>
+      <div class="form-group">
+        <label>Nom du Responsable *</label>
+        <input type="text" name="nom_responsable" value="<?= htmlspecialchars($form_data['nom_responsable'] ?? $user_detail['nom_responsable'] ?? '') ?>" required>
+      </div>
+      <div class="form-group">
+        <label>Prénom du Responsable *</label>
+        <input type="text" name="prenom_responsable" value="<?= htmlspecialchars($form_data['prenom_responsable'] ?? $user_detail['prenom_responsable'] ?? '') ?>" required>
+      </div>
+      <?php endif; ?>
       <div class="form-row">
         <div class="form-group">
           <label>Rôle</label>
@@ -454,6 +553,32 @@ function editStartup(startupId) {
   location.href = '?tab=startups&edit_startup=' + startupId;
 }
 
+function sortUsers(column) {
+  const currentSort = '<?= $current_sort ?>';
+  let newSort = column + ' ASC';
+  
+  // Toggle sort direction if clicking same column
+  if (currentSort.includes(column)) {
+    newSort = currentSort.includes('ASC') ? column + ' DESC' : column + ' ASC';
+  }
+  
+  const searchParam = '<?= $search_term ? '&search=' . htmlspecialchars($_GET['search']) : '' ?>';
+  location.href = '?tab=users&sort=' + encodeURIComponent(newSort) + searchParam;
+}
+
+function sortStartups(column) {
+  const currentSort = '<?= $current_sort ?>';
+  let newSort = column + ' ASC';
+  
+  // Toggle sort direction if clicking same column
+  if (currentSort.includes(column)) {
+    newSort = currentSort.includes('ASC') ? column + ' DESC' : column + ' ASC';
+  }
+  
+  const searchParam = '<?= $search_term ? '&search=' . htmlspecialchars($_GET['search']) : '' ?>';
+  location.href = '?tab=startups&sort=' + encodeURIComponent(newSort) + searchParam;
+}
+
 // Set active tab on load
 document.getElementById('<?= $tab ?>-tab').style.background = 'rgba(255,255,255,0.2)';
 document.getElementById('<?= $tab ?>-tab').style.color = 'white';
@@ -465,6 +590,56 @@ openModal('editUserModal');
 <?php if ($startup_detail): ?>
 openModal('editStartupModal');
 <?php endif; ?>
+
+function uploadProfilePhoto() {
+  const file = document.getElementById('profilePhoto').files[0];
+  const msgEl = document.getElementById('uploadMessage');
+  const errorEl = document.getElementById('photo-error');
+  
+  if (!file) {
+    errorEl.textContent = 'Veuillez sélectionner une image.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  
+  if (file.size > 5 * 1024 * 1024) {
+    errorEl.textContent = 'Le fichier est trop volumineux (max 5MB).';
+    errorEl.style.display = 'block';
+    return;
+  }
+  
+  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    errorEl.textContent = 'Type de fichier non autorisé (PNG, JPG, GIF, WebP).';
+    errorEl.style.display = 'block';
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('profile_picture', file);
+  
+  fetch('../../api/upload.php?action=upload_profile_picture', {method: 'POST', body: formData})
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        errorEl.style.display = 'none';
+        msgEl.innerHTML = '<div style="background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px;">✅ ' + d.message + '</div>';
+        msgEl.style.display = 'block';
+        document.getElementById('profileImg').src = d.photo_url;
+        document.getElementById('profilePhoto').value = '';
+        setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
+      } else {
+        errorEl.textContent = d.error || 'Erreur lors de l\'upload.';
+        errorEl.style.display = 'block';
+        msgEl.style.display = 'none';
+      }
+    })
+    .catch(e => {
+      errorEl.textContent = 'Erreur réseau.';
+      errorEl.style.display = 'block';
+      msgEl.style.display = 'none';
+    });
+}
 
 </script>
 

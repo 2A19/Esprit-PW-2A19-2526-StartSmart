@@ -334,7 +334,7 @@ function doLogin() {
   const email = document.getElementById('l-email').value.trim();
   const pass  = document.getElementById('l-pass').value;
 
-  // Captcha token
+  // Captcha token — fallback to placeholder when widget hasn't injected yet
   const captchaEl = document.querySelector('#login-captcha [name="h-captcha-response"]');
   const captchaToken = (captchaEl && captchaEl.value) ? captchaEl.value
                      : (typeof hcaptcha === 'undefined' ? 'widget-not-loaded' : '');
@@ -381,10 +381,10 @@ function doRegUser() {
   const pass2  = document.getElementById('u-pass2').value;
   const photo  = document.getElementById('u-photo').files[0];
   const cgu    = document.getElementById('u-cgu').checked;
-  const captchaEl = document.querySelector(`#user-captcha [name="h-captcha-response"]`);
+
+  const captchaEl = document.querySelector('#user-captcha [name="h-captcha-response"]');
   const captchaToken = (captchaEl && captchaEl.value) ? captchaEl.value
                      : (typeof hcaptcha === 'undefined' ? 'widget-not-loaded' : '');
-
 
   let ok = true;
   if(nom.length<2)               { showErr('u-nom-e','Nom requis (min. 2 car.).');    document.getElementById('u-nom').classList.add('is-error');   ok=false; }
@@ -442,7 +442,7 @@ function doRegStartup() {
   const photo  = document.getElementById('s-photo').files[0];
   const cgu    = document.getElementById('s-cgu').checked;
 
-  const captchaEl = document.querySelector('#user-captcha [name="h-captcha-response"]');
+  const captchaEl = document.querySelector('#startup-captcha [name="h-captcha-response"]');
   const captchaToken = (captchaEl && captchaEl.value) ? captchaEl.value
                      : (typeof hcaptcha === 'undefined' ? 'widget-not-loaded' : '');
 
@@ -489,6 +489,10 @@ function doRegStartup() {
       }
     })
     .catch(e=>{ setLoading('btn-reg-startup', false); showAlert('reg-err', 'error', 'Erreur réseau.'); });
+}
+
+  document.body.appendChild(form);
+  form.submit();
 }
 
 /* ── Toast ───────────────────────────────────────── */

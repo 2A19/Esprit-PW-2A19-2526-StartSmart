@@ -1,15 +1,21 @@
 <?php
 require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/../config/Mailer.php';
 require_once __DIR__ . '/../models/User.php';
-require_once __DIR__ . '/../models/Startup.php';
 require_once __DIR__ . '/../models/Validator.php';
 
 /**
- * AuthController – Login / Logout / Register (Form-based, No JSON)
+ * AuthController – Login / Logout / Register
+ * Added: hCaptcha verification + email verification token flow
  */
 class AuthController
 {
     private PDO $db;
+
+    // ── hCaptcha config ────────────────────────────────────────
+    // Register free at https://dashboard.hcaptcha.com
+    // Replace with your real secret key. The site key goes in login.php.
+    private string $hcaptchaSecret = 'YOUR_HCAPTCHA_SECRET_KEY'; // ← replace
 
     public function __construct()
     {
@@ -17,13 +23,49 @@ class AuthController
         if (session_status() === PHP_SESSION_NONE) session_start();
     }
 
-    // ── HELPER METHODS ─────────────────────────────────────────
     private function clean(string $v): string
     {
         return htmlspecialchars(strip_tags(trim($v)), ENT_QUOTES, 'UTF-8');
     }
 
-    // ── DATABASE: READ USER BY EMAIL ───────────────────────────
+    // ── Verify hCaptcha token with hCaptcha API ────────────────
+    private function verifyCaptcha(string $token): bool
+    {
+        // If secret key not yet configured, skip server-side check (dev mode only)
+        // Remove this condition once you add your real secret key
+        if ($this->hcaptchaSecret === 'YOUR_HCAPTCHA_SECRET_KEY') {
+            return !empty($token); // trust client-side widget passed
+        }
+
+        if (empty($token)) return false;
+
+        // Use cURL (more reliable than file_get_contents on XAMPP)
+        $ch = curl_init('https://hcaptcha.com/siteverify');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => http_build_query([
+                'secret'   => $this->hcaptchaSecret,
+                'response' => $token,
+                'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+            ]),
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+        $result = curl_exec($ch);
+        curl_close($ch);
+
+        if ($result === false) return false;
+        $json = json_decode($result, true);
+        return !empty($json['success']);
+    }
+
+    private function generateToken(): string
+    {
+        return bin2hex(random_bytes(32));
+    }
+
     private function readUserByEmail(string $email): ?array
     {
         $stmt = $this->db->prepare("SELECT * FROM users WHERE email = :email LIMIT 1");
@@ -31,119 +73,119 @@ class AuthController
         return $stmt->fetch() ?: null;
     }
 
-    // ── DATABASE: READ STARTUP BY EMAIL ────────────────────────
-    private function readStartupByEmail(string $email): ?array
-    {
-        $stmt = $this->db->prepare("SELECT * FROM startups WHERE email = :email LIMIT 1");
-        $stmt->execute([':email' => $email]);
-        return $stmt->fetch() ?: null;
-    }
-
-    // ── DATABASE: TOUCH LAST LOGIN USER ────────────────────────
-    private function touchLastLoginUser(int $id): void
+    private function touchLastLogin(int $id): void
     {
         $this->db->prepare("UPDATE users SET derniere_connexion = NOW() WHERE id = :id")
                  ->execute([':id' => $id]);
     }
 
-    // ── DATABASE: TOUCH LAST LOGIN STARTUP ─────────────────────
-    private function touchLastLoginStartup(int $id): void
-    {
-        $this->db->prepare("UPDATE startups SET derniere_connexion=NOW() WHERE id=:id")
-                 ->execute([':id' => $id]);
-    }
-
-    // ── DATABASE: EMAIL EXISTS USER ────────────────────────────
-    private function emailExistsUser(string $email): bool
+    private function emailExists(string $email): bool
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM users WHERE email = :email");
         $stmt->execute([':email' => $email]);
         return (int)$stmt->fetchColumn() > 0;
     }
 
-    // ── DATABASE: EMAIL EXISTS STARTUP ─────────────────────────
-    private function emailExistsStartup(string $email): bool
+    private function createUserDb(User $user, string $token): bool
     {
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM startups WHERE email = :email");
-        $stmt->execute([':email' => $email]);
-        return (int)$stmt->fetchColumn() > 0;
-    }
-
-    // ── DATABASE: CREATE USER ──────────────────────────────────
-    private function createUserDb(User $user): bool
-    {
-        $sql = "INSERT INTO users (nom, prenom, email, password, telephone, date_naissance, role, statut)
-                VALUES (:nom, :prenom, :email, :password, :telephone, :date_naissance, :role, :statut)";
+        $sql = "INSERT INTO users (nom, prenom, email, password, telephone, date_naissance, role, statut,
+                                   nom_startup, nom_responsable, prenom_responsable, secteur, site_web, stade,
+                                   email_token, email_token_expires)
+                VALUES (:nom, :prenom, :email, :password, :telephone, :date_naissance, :role, 'pending',
+                        :nom_startup, :nom_responsable, :prenom_responsable, :secteur, :site_web, :stade,
+                        :email_token, DATE_ADD(NOW(), INTERVAL 24 HOUR))";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
-            ':nom'            => $this->clean($user->getNom()),
-            ':prenom'         => $this->clean($user->getPrenom()),
-            ':email'          => $this->clean($user->getEmail()),
-            ':password'       => password_hash($user->getPassword(), PASSWORD_BCRYPT),
-            ':telephone'      => $user->getTelephone() ? $this->clean($user->getTelephone()) : null,
-            ':date_naissance' => $user->getDateNaissance(),
-            ':role'           => $user->getRole() ?? 'user',
-            ':statut'         => $user->getStatut() ?? 'actif',
+            ':nom'                => $this->clean($user->getNom()),
+            ':prenom'             => $this->clean($user->getPrenom()),
+            ':email'              => $this->clean($user->getEmail()),
+            ':password'           => password_hash($user->getPassword(), PASSWORD_BCRYPT),
+            ':telephone'          => $user->getTelephone() ? $this->clean($user->getTelephone()) : null,
+            ':date_naissance'     => $user->getDateNaissance(),
+            ':role'               => $user->getRole() ?? 'user',
+            ':nom_startup'        => $user->getNomStartup() ? $this->clean($user->getNomStartup()) : null,
+            ':nom_responsable'    => $user->getNomResponsable() ? $this->clean($user->getNomResponsable()) : null,
+            ':prenom_responsable' => $user->getPrenomResponsable() ? $this->clean($user->getPrenomResponsable()) : null,
+            ':secteur'            => $user->getSecteur() ? $this->clean($user->getSecteur()) : null,
+            ':site_web'           => $user->getSiteWeb() ? $this->clean($user->getSiteWeb()) : null,
+            ':stade'              => $user->getStade() ?? 'idee',
+            ':email_token'        => $token,
         ]);
     }
 
-    // ── DATABASE: CREATE STARTUP ───────────────────────────────
-    private function createStartupDb(Startup $startup): bool
+    // ── VERIFY EMAIL TOKEN (GET ?token=...) ───────────────────
+    public function verifyEmailToken(): void
     {
-        $sql = "INSERT INTO startups
-                    (nom_startup, nom_responsable, prenom_responsable, email, password,
-                     telephone, secteur, site_web, stade, statut)
-                VALUES
-                    (:nom_startup, :nom_responsable, :prenom_responsable, :email, :password,
-                     :telephone, :secteur, :site_web, :stade, :statut)";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([
-            ':nom_startup'        => $this->clean($startup->getNomStartup()),
-            ':nom_responsable'    => $this->clean($startup->getNomResponsable()),
-            ':prenom_responsable' => $this->clean($startup->getPrenomResponsable()),
-            ':email'              => $this->clean($startup->getEmail()),
-            ':password'           => password_hash($startup->getPassword(), PASSWORD_BCRYPT),
-            ':telephone'          => $startup->getTelephone() ? $this->clean($startup->getTelephone()) : null,
-            ':secteur'            => $startup->getSecteur() ? $this->clean($startup->getSecteur()) : null,
-            ':site_web'           => $startup->getSiteWeb() ? $this->clean($startup->getSiteWeb()) : null,
-            ':stade'              => $startup->getStade() ?? 'idee',
-            ':statut'             => $startup->getStatut() ?? 'actif',
-        ]);
+        $token = trim($_GET['token'] ?? '');
+
+        if (empty($token)) {
+            $_SESSION['verify_error'] = 'Lien de vérification invalide.';
+            header('Location: /startsmart/views/auth/verify-email.php');
+            exit;
+        }
+
+        $stmt = $this->db->prepare(
+            "SELECT id, statut, email_token_expires FROM users WHERE email_token = :token LIMIT 1"
+        );
+        $stmt->execute([':token' => $token]);
+        $row = $stmt->fetch();
+
+        if (!$row) {
+            $_SESSION['verify_error'] = 'Lien invalide ou déjà utilisé.';
+            header('Location: /startsmart/views/auth/verify-email.php');
+            exit;
+        }
+
+        if (strtotime($row['email_token_expires']) < time()) {
+            $_SESSION['verify_error'] = 'Ce lien a expiré (valable 24h). Veuillez vous réinscrire.';
+            header('Location: /startsmart/views/auth/verify-email.php');
+            exit;
+        }
+
+        if ($row['statut'] === 'actif') {
+            $_SESSION['verify_success'] = 'Votre email est déjà vérifié. Vous pouvez vous connecter.';
+            header('Location: /startsmart/views/auth/verify-email.php');
+            exit;
+        }
+
+        $this->db->prepare(
+            "UPDATE users SET statut = 'actif', email_token = NULL, email_token_expires = NULL WHERE id = :id"
+        )->execute([':id' => $row['id']]);
+
+        $_SESSION['verify_success'] = 'Email vérifié avec succès ! Vous pouvez maintenant vous connecter.';
+        header('Location: /startsmart/views/auth/verify-email.php');
+        exit;
     }
 
     // ── LOGIN ─────────────────────────────────────────────────
     public function login(): void
     {
         $d     = $this->getBody();
-        $v     = new Validator();
         $email = trim($d['email']    ?? '');
         $pass  = trim($d['password'] ?? '');
         $role  = trim($d['role']     ?? '');
 
+        // Verify CAPTCHA first
+        if (!$this->verifyCaptcha($d['h-captcha-response'] ?? '')) {
+            $_SESSION['login_errors'] = ['general' => 'Vérification CAPTCHA échouée. Veuillez réessayer.'];
+            header('Location: /startsmart/views/auth/login.php');
+            exit;
+        }
+
+        $v = new Validator();
         $v->required('email',    $email, "L'email")
           ->email   ('email',    $email)
           ->required('password', $pass,  'Le mot de passe')
           ->required('role',     $role,  'Le rôle')
           ->inList  ('role',     $role,  ['user','startup','admin'], 'Le rôle');
 
-        if ($v->fails()) { 
+        if ($v->fails()) {
             $_SESSION['login_errors'] = $v->getErrors();
             header('Location: /startsmart/views/auth/login.php');
             exit;
         }
 
-        // Chercher le compte selon le rôle
-        $account = null;
-        $type    = '';
-
-        if ($role === 'user' || $role === 'admin') {
-            $account = $this->readUserByEmail($email);
-            if ($account && $account['role'] !== $role) $account = null;
-            $type = 'user';
-        } elseif ($role === 'startup') {
-            $account = $this->readStartupByEmail($email);
-            $type = 'startup';
-        }
+        $account = $this->readUserByEmail($email);
 
         if (!$account || !password_verify($pass, $account['password'])) {
             $_SESSION['login_errors'] = ['general' => 'Email ou mot de passe incorrect.'];
@@ -151,25 +193,37 @@ class AuthController
             exit;
         }
 
-        if (isset($account['statut']) && $account['statut'] === 'banni') {
-            $_SESSION['login_errors'] = ['general' => 'Votre compte a été suspendu. Contactez l\'administrateur.'];
+        if ($account['role'] !== $role) {
+            $_SESSION['login_errors'] = ['general' => 'Email ou mot de passe incorrect.'];
             header('Location: /startsmart/views/auth/login.php');
             exit;
         }
 
-        // Mettre à jour dernière connexion
-        if ($type === 'user')    $this->touchLastLoginUser($account['id']);
-        else                     $this->touchLastLoginStartup($account['id']);
+        if ($account['statut'] === 'pending') {
+            $_SESSION['login_errors'] = ['general' => 'Veuillez vérifier votre adresse email avant de vous connecter. Consultez votre boîte de réception.'];
+            header('Location: /startsmart/views/auth/login.php');
+            exit;
+        }
 
-        // Démarrer la session
+        if ($account['statut'] === 'banni') {
+            $_SESSION['login_errors'] = ['general' => "Votre compte a été suspendu. Contactez l'administrateur."];
+            header('Location: /startsmart/views/auth/login.php');
+            exit;
+        }
+
+        $this->touchLastLogin($account['id']);
+
         $_SESSION['user_id']   = $account['id'];
         $_SESSION['user_role'] = $role;
-        $_SESSION['user_name'] = $type === 'startup'
+        $_SESSION['user_name'] = $role === 'startup'
             ? $account['nom_startup']
             : $account['prenom'] . ' ' . $account['nom'];
-        $_SESSION['user_type'] = $type;
+        $_SESSION['user_type'] = 'user';
+        $_SESSION['user_photo'] = $account['profile_picture'] ?? null;
 
-        $redirect = $role === 'admin' ? '/startsmart/views/back/dashboard.php' : '/startsmart/views/front/dashboard.php';
+        $redirect = $role === 'admin'
+            ? '/startsmart/views/back/dashboard.php'
+            : '/startsmart/views/front/dashboard.php';
         header('Location: ' . $redirect);
         exit;
     }
@@ -178,8 +232,13 @@ class AuthController
     public function registerUser(): void
     {
         $d = $this->getBody();
-        $v = new Validator();
 
+        if (!$this->verifyCaptcha($d['h-captcha-response'] ?? '')) {
+            echo json_encode(['success' => false, 'error' => 'Vérification CAPTCHA échouée. Veuillez réessayer.']);
+            exit;
+        }
+
+        $v = new Validator();
         $v->required('nom',      $d['nom']      ?? '', 'Le nom')
           ->minLen  ('nom',      $d['nom']       ?? '', 2, 'Le nom')
           ->required('prenom',   $d['prenom']   ?? '', 'Le prénom')
@@ -192,43 +251,32 @@ class AuthController
           ->phone   ('telephone', $d['telephone'] ?? null)
           ->date    ('date_naissance', $d['date_naissance'] ?? null, 'Date de naissance');
 
-        if ($v->fails()) { 
-            $_SESSION['reg_errors'] = $v->getErrors();
-            $_SESSION['reg_form_data'] = $d;
-            header('Location: /startsmart/views/auth/login.php?tab=register');
+        if ($v->fails()) {
+            echo json_encode(['success' => false, 'error' => array_values($v->getErrors())[0] ?? 'Erreur de validation']);
             exit;
         }
 
-        if ($this->emailExistsUser($d['email'])) {
-            $_SESSION['reg_errors'] = ['email' => 'Cet email est déjà utilisé.'];
-            $_SESSION['reg_form_data'] = $d;
-            header('Location: /startsmart/views/auth/login.php?tab=register');
+        if ($this->emailExists($d['email'])) {
+            echo json_encode(['success' => false, 'error' => 'Cet email est déjà utilisé.']);
             exit;
         }
 
-        $user = new User(
-            null,
-            $d['nom'],
-            $d['prenom'],
-            $d['email'],
-            $d['password'],
-            $d['telephone'] ?? null,
-            $d['date_naissance'] ?? null,
-            'user',
-            'actif'
-        );
+        $profile_picture = $this->uploadProfilePicture();
 
-        $ok = $this->createUserDb($user);
-        
-        if (!$ok) {
-            $_SESSION['reg_errors'] = ['general' => 'Erreur lors de la création du compte.'];
-            $_SESSION['reg_form_data'] = $d;
-            header('Location: /startsmart/views/auth/login.php?tab=register');
+        $user = new User(null, $d['nom'], $d['prenom'], $d['email'], $d['password'],
+                         $d['telephone'] ?? null, $d['date_naissance'] ?? null, 'user', 'pending',
+                         null, $profile_picture);
+
+        $token = $this->generateToken();
+        if (!$this->createUserDb($user, $token)) {
+            echo json_encode(['success' => false, 'error' => 'Erreur lors de la création du compte.']);
             exit;
         }
-        
-        $_SESSION['reg_success'] = 'Compte créé avec succès. Vous pouvez vous connecter.';
-        header('Location: /startsmart/views/auth/login.php');
+
+        (new Mailer())->sendVerification($d['email'], $d['prenom'] . ' ' . $d['nom'], $token);
+
+        echo json_encode(['success' => true, 'message' => 'Compte créé ! Un email de vérification a été envoyé à ' .
+            htmlspecialchars($d['email']) . '. Veuillez consulter votre boîte de réception (vérifiez les spams).']);
         exit;
     }
 
@@ -236,8 +284,13 @@ class AuthController
     public function registerStartup(): void
     {
         $d = $this->getBody();
-        $v = new Validator();
 
+        if (!$this->verifyCaptcha($d['h-captcha-response'] ?? '')) {
+            echo json_encode(['success' => false, 'error' => 'Vérification CAPTCHA échouée. Veuillez réessayer.']);
+            exit;
+        }
+
+        $v = new Validator();
         $v->required('nom_startup',         $d['nom_startup']        ?? '', 'Nom de la startup')
           ->minLen  ('nom_startup',         $d['nom_startup']        ?? '', 2, 'Nom de la startup')
           ->required('nom_responsable',     $d['nom_responsable']    ?? '', 'Nom du responsable')
@@ -252,45 +305,38 @@ class AuthController
           ->url     ('site_web',            $d['site_web']           ?? null)
           ->inList  ('stade', $d['stade'] ?? 'idee', ['idee','prototype','mvp','croissance','scale'], 'Stade');
 
-        if ($v->fails()) { 
-            $_SESSION['reg_errors'] = $v->getErrors();
-            $_SESSION['reg_form_data'] = $d;
-            header('Location: /startsmart/views/auth/login.php?tab=register&type=startup');
+        if ($v->fails()) {
+            echo json_encode(['success' => false, 'error' => array_values($v->getErrors())[0] ?? 'Erreur de validation']);
             exit;
         }
 
-        if ($this->emailExistsStartup($d['email'])) {
-            $_SESSION['reg_errors'] = ['email' => 'Cet email est déjà utilisé.'];
-            $_SESSION['reg_form_data'] = $d;
-            header('Location: /startsmart/views/auth/login.php?tab=register&type=startup');
+        if ($this->emailExists($d['email'])) {
+            echo json_encode(['success' => false, 'error' => 'Cet email est déjà utilisé.']);
             exit;
         }
 
-        $startup = new Startup(
-            null,
-            $d['nom_startup'],
-            $d['nom_responsable'],
-            $d['prenom_responsable'],
+        $profile_picture = $this->uploadProfilePicture();
+
+        $user = new User(null, $d['nom_responsable'], $d['prenom_responsable'], $d['email'],
+                         $d['password'], $d['telephone'] ?? null, null, 'startup', 'pending',
+                         null, $profile_picture, $d['nom_startup'], $d['nom_responsable'],
+                         $d['prenom_responsable'], $d['secteur'], $d['site_web'] ?? null,
+                         $d['stade'] ?? 'idee');
+
+        $token = $this->generateToken();
+        if (!$this->createUserDb($user, $token)) {
+            echo json_encode(['success' => false, 'error' => 'Erreur lors de la création.']);
+            exit;
+        }
+
+        (new Mailer())->sendVerification(
             $d['email'],
-            $d['password'],
-            $d['telephone'] ?? null,
-            $d['secteur'],
-            $d['site_web'] ?? null,
-            $d['stade'] ?? 'idee',
-            'actif'
+            $d['prenom_responsable'] . ' ' . $d['nom_responsable'],
+            $token
         );
 
-        $ok = $this->createStartupDb($startup);
-        
-        if (!$ok) {
-            $_SESSION['reg_errors'] = ['general' => 'Erreur lors de la création.'];
-            $_SESSION['reg_form_data'] = $d;
-            header('Location: /startsmart/views/auth/login.php?tab=register&type=startup');
-            exit;
-        }
-        
-        $_SESSION['reg_success'] = 'Compte startup créé. En attente de vérification.';
-        header('Location: /startsmart/views/auth/login.php');
+        echo json_encode(['success' => true, 'message' => 'Compte startup créé ! Un email de vérification a été envoyé à ' .
+            htmlspecialchars($d['email']) . '. Veuillez vérifier votre adresse avant de vous connecter.']);
         exit;
     }
 
@@ -302,9 +348,48 @@ class AuthController
         exit;
     }
 
-    // ── Helpers ───────────────────────────────────────────────
-    private function getBody(): array
+    private function uploadProfilePicture(): ?string
     {
-        return $_POST;
+        if (empty($_FILES['profile_picture']) || $_FILES['profile_picture']['error'] !== UPLOAD_ERR_OK) {
+            return null;
+        }
+
+        $file = $_FILES['profile_picture'];
+        
+        // Validate file type
+        $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mime, $allowed_types)) {
+            return null;
+        }
+
+        // Validate file size (max 5MB)
+        if ($file['size'] > 5 * 1024 * 1024) {
+            return null;
+        }
+
+        // Create profiles directory if it doesn't exist
+        $upload_dir = __DIR__ . '/../public/img/profiles';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+
+        // Generate unique filename
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = 'user_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $filepath = $upload_dir . '/' . $filename;
+        $relative_path = '/startsmart/public/img/profiles/' . $filename;
+
+        // Move uploaded file
+        if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+            return null;
+        }
+
+        return $relative_path;
     }
+
+    private function getBody(): array { return $_POST; }
 }

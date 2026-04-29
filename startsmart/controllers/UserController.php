@@ -1,10 +1,12 @@
 <?php
 require_once __DIR__ . '/../config/Database.php';
 require_once __DIR__ . '/../models/User.php';
-require_once __DIR__ . '/../models/Startup.php';
 require_once __DIR__ . '/../models/Validator.php';
 
-
+/**
+ * UserController – Now handles both regular users and startup accounts
+ * Tables have been merged: role='startup' indicates a startup account in users table
+ */
 class UserController
 {
     private PDO $db;
@@ -25,11 +27,32 @@ class UserController
     private function buildWhere(string $role, string $statut, string $search): array
     {
         $conds = []; $params = [];
-        if ($role   !== '') { $conds[] = 'role = :role';     $params[':role']   = $role; }
+        
+        // Handle comma-separated roles
+        if ($role !== '') { 
+            $roles = array_map('trim', explode(',', $role));
+            if (count($roles) > 1) {
+                $placeholders = [];
+                foreach ($roles as $i => $r) {
+                    $key = ":role{$i}";
+                    $placeholders[] = $key;
+                    $params[$key] = $r;
+                }
+                $conds[] = 'role IN (' . implode(',', $placeholders) . ')';
+            } else {
+                $conds[] = 'role = :role';
+                $params[':role'] = $role;
+            }
+        }
+        
         if ($statut !== '') { $conds[] = 'statut = :statut'; $params[':statut'] = $statut; }
         if ($search !== '') {
-            $conds[] = '(nom LIKE :s OR prenom LIKE :s OR email LIKE :s)';
-            $params[':s'] = '%' . $search . '%';
+            $searchTerm = '%' . $search . '%';
+            $conds[] = '(nom LIKE :s_nom OR prenom LIKE :s_prenom OR email LIKE :s_email OR nom_startup LIKE :s_startup)';
+            $params[':s_nom'] = $searchTerm;
+            $params[':s_prenom'] = $searchTerm;
+            $params[':s_email'] = $searchTerm;
+            $params[':s_startup'] = $searchTerm;
         }
         return [$conds ? 'WHERE ' . implode(' AND ', $conds) : '', $params];
     }
@@ -37,27 +60,35 @@ class UserController
     // ── DATABASE: CREATE USER ──────────────────────────────────
     private function createUser(User $user): bool
     {
-        $sql = "INSERT INTO users (nom, prenom, email, password, telephone, date_naissance, role, statut)
-                VALUES (:nom, :prenom, :email, :password, :telephone, :date_naissance, :role, :statut)";
+        $sql = "INSERT INTO users (nom, prenom, email, password, telephone, date_naissance, role, statut,
+                                   nom_startup, nom_responsable, prenom_responsable, secteur, site_web, stade)
+                VALUES (:nom, :prenom, :email, :password, :telephone, :date_naissance, :role, :statut,
+                        :nom_startup, :nom_responsable, :prenom_responsable, :secteur, :site_web, :stade)";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
-            ':nom'            => $this->clean($user->getNom()),
-            ':prenom'         => $this->clean($user->getPrenom()),
-            ':email'          => $this->clean($user->getEmail()),
-            ':password'       => password_hash($user->getPassword(), PASSWORD_BCRYPT),
-            ':telephone'      => $user->getTelephone() ? $this->clean($user->getTelephone()) : null,
-            ':date_naissance' => $user->getDateNaissance(),
-            ':role'           => $user->getRole() ?? 'user',
-            ':statut'         => $user->getStatut() ?? 'actif',
+            ':nom'                => $this->clean($user->getNom()),
+            ':prenom'             => $this->clean($user->getPrenom()),
+            ':email'              => $this->clean($user->getEmail()),
+            ':password'           => password_hash($user->getPassword(), PASSWORD_BCRYPT),
+            ':telephone'          => $user->getTelephone() ? $this->clean($user->getTelephone()) : null,
+            ':date_naissance'     => $user->getDateNaissance(),
+            ':role'               => $user->getRole() ?? 'user',
+            ':statut'             => $user->getStatut() ?? 'actif',
+            ':nom_startup'        => $user->getNomStartup() ? $this->clean($user->getNomStartup()) : null,
+            ':nom_responsable'    => $user->getNomResponsable() ? $this->clean($user->getNomResponsable()) : null,
+            ':prenom_responsable' => $user->getPrenomResponsable() ? $this->clean($user->getPrenomResponsable()) : null,
+            ':secteur'            => $user->getSecteur() ? $this->clean($user->getSecteur()) : null,
+            ':site_web'           => $user->getSiteWeb() ? $this->clean($user->getSiteWeb()) : null,
+            ':stade'              => $user->getStade() ?? 'idee',
         ]);
     }
 
     // ── DATABASE: READ ALL USERS ───────────────────────────────
-    private function readAllUsers(int $limit = 10, int $offset = 0, string $role = '', string $statut = '', string $search = ''): array
+    private function readAllUsers(int $limit = 10, int $offset = 0, string $role = '', string $statut = '', string $search = '', string $sort = 'id DESC'): array
     {
         [$where, $params] = $this->buildWhere($role, $statut, $search);
-        $sql = "SELECT id, nom, prenom, email, telephone, role, statut, date_inscription
-                FROM users {$where} ORDER BY id DESC LIMIT :limit OFFSET :offset";
+        $sql = "SELECT id, nom, prenom, email, telephone, role, statut, date_inscription, nom_startup, profile_picture
+                FROM users {$where} ORDER BY {$sort} LIMIT :limit OFFSET :offset";
         $stmt = $this->db->prepare($sql);
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
@@ -79,7 +110,7 @@ class UserController
     private function readOneUser(int $id): ?array
     {
         $stmt = $this->db->prepare(
-            "SELECT id, nom, prenom, email, telephone, date_naissance, role, statut, date_inscription FROM users WHERE id = :id"
+            "SELECT * FROM users WHERE id = :id"
         );
         $stmt->execute([':id' => $id]);
         return $stmt->fetch() ?: null;
@@ -104,19 +135,31 @@ class UserController
                     telephone      = :telephone,
                     date_naissance = :date_naissance,
                     role           = :role,
-                    statut         = :statut
+                    statut         = :statut,
+                    nom_startup    = :nom_startup,
+                    nom_responsable = :nom_responsable,
+                    prenom_responsable = :prenom_responsable,
+                    secteur        = :secteur,
+                    site_web       = :site_web,
+                    stade          = :stade
                     {$pwPart}
                 WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         $params = [
-            ':nom'            => $this->clean($user->getNom()),
-            ':prenom'         => $this->clean($user->getPrenom()),
-            ':email'          => $this->clean($user->getEmail()),
-            ':telephone'      => $user->getTelephone() ? $this->clean($user->getTelephone()) : null,
-            ':date_naissance' => $user->getDateNaissance(),
-            ':role'           => $user->getRole() ?? 'user',
-            ':statut'         => $user->getStatut() ?? 'actif',
-            ':id'             => $id,
+            ':nom'                => $this->clean($user->getNom()),
+            ':prenom'             => $this->clean($user->getPrenom()),
+            ':email'              => $this->clean($user->getEmail()),
+            ':telephone'          => $user->getTelephone() ? $this->clean($user->getTelephone()) : null,
+            ':date_naissance'     => $user->getDateNaissance(),
+            ':role'               => $user->getRole() ?? 'user',
+            ':statut'             => $user->getStatut() ?? 'actif',
+            ':nom_startup'        => $user->getNomStartup() ? $this->clean($user->getNomStartup()) : null,
+            ':nom_responsable'    => $user->getNomResponsable() ? $this->clean($user->getNomResponsable()) : null,
+            ':prenom_responsable' => $user->getPrenomResponsable() ? $this->clean($user->getPrenomResponsable()) : null,
+            ':secteur'            => $user->getSecteur() ? $this->clean($user->getSecteur()) : null,
+            ':site_web'           => $user->getSiteWeb() ? $this->clean($user->getSiteWeb()) : null,
+            ':stade'              => $user->getStade() ?? 'idee',
+            ':id'                 => $id,
         ];
         if ($user->getPassword()) {
             $params[':password'] = password_hash($user->getPassword(), PASSWORD_BCRYPT);
@@ -132,7 +175,7 @@ class UserController
     }
 
     // ── DATABASE: CHECK EMAIL EXISTS ──────────────────────────
-    private function emailExistsUser(string $email, int $excludeId = 0): bool
+    private function emailExists(string $email, int $excludeId = 0): bool
     {
         $stmt = $this->db->prepare(
             "SELECT COUNT(*) FROM users WHERE email = :email AND id != :id"
@@ -153,14 +196,18 @@ class UserController
     {
         return $this->db->query(
             "SELECT COUNT(*) AS total,
+                    SUM(role='user')     AS users,
+                    SUM(role='startup')  AS startups,
+                    SUM(role='admin')    AS admins,
                     SUM(statut='actif')   AS actifs,
                     SUM(statut='inactif') AS inactifs,
-                    SUM(statut='banni')   AS bannis
+                    SUM(statut='banni')   AS bannis,
+                    SUM(statut='verifie') AS verifiees
              FROM users"
         )->fetch();
     }
 
-    // ── CONTROLLER: LIST USERS ─────────────────────────────────
+    // ── CONTROLLER: LIST USERS (excluding startups) ────────────
     public function listUsers(): void
     {
         $limit  = (int)($_GET['limit']  ?? 8);
@@ -169,8 +216,16 @@ class UserController
         $role   = $_GET['role']   ?? '';
         $statut = $_GET['statut'] ?? '';
         $search = $_GET['search'] ?? '';
+        $sort   = $_GET['sort']   ?? 'id DESC';
+        
+        // Validate sort parameter to prevent SQL injection
+        $allowed_sorts = ['id ASC', 'id DESC', 'nom ASC', 'nom DESC', 'prenom ASC', 'prenom DESC', 'email ASC', 'email DESC', 'role ASC', 'role DESC', 'statut ASC', 'statut DESC'];
+        if (!in_array($sort, $allowed_sorts)) $sort = 'id DESC';
 
-        $rows  = $this->readAllUsers($limit, $offset, $role, $statut, $search);
+        // Filter out startups when listing regular users
+        if ($role === '') $role = 'user,admin';
+        
+        $rows  = $this->readAllUsers($limit, $offset, $role, $statut, $search, $sort);
         $total = $this->countUsers($role, $statut, $search);
         $stats = $this->getUserStats();
 
@@ -179,6 +234,36 @@ class UserController
             'total'   => $total,
             'pages'   => (int)ceil($total / $limit),
             'page'    => $page,
+            'sort'    => $sort,
+            'stats'   => $stats,
+        ];
+    }
+
+    // ── CONTROLLER: LIST STARTUPS (role='startup') ─────────────
+    public function listStartups(): void
+    {
+        $limit  = (int)($_GET['limit']  ?? 8);
+        $page   = max(1, (int)($_GET['page']   ?? 1));
+        $offset = ($page - 1) * $limit;
+        $statut = $_GET['statut'] ?? '';
+        $search = $_GET['search'] ?? '';
+        $sort   = $_GET['sort']   ?? 'id DESC';
+        
+        // Validate sort parameter to prevent SQL injection
+        $allowed_sorts = ['id ASC', 'id DESC', 'nom_startup ASC', 'nom_startup DESC', 'nom_responsable ASC', 'nom_responsable DESC', 'email ASC', 'email DESC', 'secteur ASC', 'secteur DESC', 'statut ASC', 'statut DESC'];
+        if (!in_array($sort, $allowed_sorts)) $sort = 'id DESC';
+
+        // Filter only startups
+        $rows  = $this->readAllUsers($limit, $offset, 'startup', $statut, $search, $sort);
+        $total = $this->countUsers('startup', $statut, $search);
+        $stats = $this->getUserStats();
+
+        $_SESSION['startups_list'] = [
+            'data'    => $rows,
+            'total'   => $total,
+            'pages'   => (int)ceil($total / $limit),
+            'page'    => $page,
+            'sort'    => $sort,
             'stats'   => $stats,
         ];
     }
@@ -200,6 +285,23 @@ class UserController
         $_SESSION['user_detail'] = $user;
     }
 
+    // ── CONTROLLER: GET STARTUP ────────────────────────────────
+    public function getStartup(int $id): void
+    {
+        if ($id <= 0) {
+            $_SESSION['startup_error'] = 'ID invalide.';
+            return;
+        }
+
+        $startup = $this->readOneUser($id);
+        if (!$startup || $startup['role'] !== 'startup') {
+            $_SESSION['startup_error'] = 'Startup introuvable.';
+            return;
+        }
+
+        $_SESSION['startup_detail'] = $startup;
+    }
+
     // ── CONTROLLER: CREATE USER ────────────────────────────────
     public function createUserAction(array $d): void
     {
@@ -215,8 +317,8 @@ class UserController
             ->confirm ('password', $d['password'] ?? '', $d['password_confirm'] ?? '')
             ->phone   ('telephone', $d['telephone'] ?? null)
             ->date    ('date_naissance', $d['date_naissance'] ?? null, 'Date de naissance')
-            ->inList  ('role',   $d['role']   ?? 'user', ['user','admin'],               'Le rôle')
-            ->inList  ('statut', $d['statut'] ?? 'actif', ['actif','inactif','banni'],   'Le statut');
+            ->inList  ('role',   $d['role']   ?? 'user', ['user','startup','admin'],               'Le rôle')
+            ->inList  ('statut', $d['statut'] ?? 'actif', ['actif','inactif','banni','verifie'],   'Le statut');
 
         if ($this->v->fails()) {
             $_SESSION['form_errors'] = $this->v->getErrors();
@@ -224,7 +326,7 @@ class UserController
             return;
         }
 
-        if ($this->emailExistsUser($d['email'])) {
+        if ($this->emailExists($d['email'])) {
             $_SESSION['form_errors'] = ['email' => 'Cet email est déjà utilisé.'];
             $_SESSION['form_data'] = $d;
             return;
@@ -272,8 +374,8 @@ class UserController
             ->email   ('email',  $d['email']  ?? '')
             ->phone   ('telephone', $d['telephone'] ?? null)
             ->date    ('date_naissance', $d['date_naissance'] ?? null, 'Date de naissance')
-            ->inList  ('role',   $d['role']   ?? 'user', ['user','admin'],             'Le rôle')
-            ->inList  ('statut', $d['statut'] ?? 'actif', ['actif','inactif','banni'], 'Le statut');
+            ->inList  ('role',   $d['role']   ?? 'user', ['user','startup','admin'],             'Le rôle')
+            ->inList  ('statut', $d['statut'] ?? 'actif', ['actif','inactif','banni','verifie'], 'Le statut');
 
         if (!empty($d['password'])) {
             $this->v->password('password', $d['password'])
@@ -286,7 +388,7 @@ class UserController
             return;
         }
 
-        if ($this->emailExistsUser($d['email'], $id)) {
+        if ($this->emailExists($d['email'], $id)) {
             $_SESSION['form_errors'] = ['email' => 'Cet email est déjà utilisé par un autre compte.'];
             $_SESSION['form_data'] = $d;
             return;
@@ -301,7 +403,15 @@ class UserController
             $d['telephone'] ?? null,
             $d['date_naissance'] ?? null,
             $d['role'] ?? 'user',
-            $d['statut'] ?? 'actif'
+            $d['statut'] ?? 'actif',
+            null,
+            null,
+            $d['nom_startup'] ?? null,
+            $d['nom_responsable'] ?? null,
+            $d['prenom_responsable'] ?? null,
+            $d['secteur'] ?? null,
+            $d['site_web'] ?? null,
+            $d['stade'] ?? 'idee'
         );
 
         $ok = $this->updateUserDb($id, $user);
@@ -333,202 +443,6 @@ class UserController
         }
     }
 
-    // ── DATABASE: CREATE STARTUP ───────────────────────────────
-    private function createStartup(Startup $startup): bool
-    {
-        $sql = "INSERT INTO startups
-                    (nom_startup, nom_responsable, prenom_responsable, email, password,
-                     telephone, secteur, site_web, stade, statut)
-                VALUES
-                    (:nom_startup, :nom_responsable, :prenom_responsable, :email, :password,
-                     :telephone, :secteur, :site_web, :stade, :statut)";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([
-            ':nom_startup'        => $this->clean($startup->getNomStartup()),
-            ':nom_responsable'    => $this->clean($startup->getNomResponsable()),
-            ':prenom_responsable' => $this->clean($startup->getPrenomResponsable()),
-            ':email'              => $this->clean($startup->getEmail()),
-            ':password'           => password_hash($startup->getPassword(), PASSWORD_BCRYPT),
-            ':telephone'          => $startup->getTelephone() ? $this->clean($startup->getTelephone()) : null,
-            ':secteur'            => $startup->getSecteur() ? $this->clean($startup->getSecteur()) : null,
-            ':site_web'           => $startup->getSiteWeb() ? $this->clean($startup->getSiteWeb()) : null,
-            ':stade'              => $startup->getStade() ?? 'idee',
-            ':statut'             => $startup->getStatut() ?? 'actif',
-        ]);
-    }
-
-    // ── DATABASE: READ ALL STARTUPS (WITH USER JOIN) ────────────
-    private function readAllStartups(int $limit = 10, int $offset = 0, string $statut = '', string $search = ''): array
-    {
-        $sql = "SELECT 
-                    s.id, s.user_id, s.nom_startup, s.nom_responsable, s.prenom_responsable, 
-                    s.email, s.telephone, s.secteur, s.site_web, s.stade, s.statut, 
-                    s.date_inscription, s.derniere_connexion,
-                    u.nom as user_nom, u.prenom as user_prenom, u.email as user_email
-                FROM startups s
-                LEFT JOIN users u ON s.user_id = u.id
-                WHERE 1=1";
-        
-        if ($statut) {
-            $sql .= " AND s.statut = '" . $this->clean($statut) . "'";
-        }
-        
-        if ($search) {
-            $clean = $this->clean($search);
-            $sql .= " AND (s.nom_startup LIKE '%$clean%' OR s.email LIKE '%$clean%' OR u.nom LIKE '%$clean%' OR u.prenom LIKE '%$clean%')";
-        }
-        
-        $sql .= " ORDER BY s.id DESC LIMIT :limit OFFSET :offset";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll();
-    }
-
-    // ── DATABASE: COUNT STARTUPS ───────────────────────────────
-    private function countStartups(string $statut = '', string $search = ''): int
-    {
-        $sql = "SELECT COUNT(*) FROM startups WHERE 1=1";
-        
-        if ($statut) {
-            $sql .= " AND statut = '" . $this->clean($statut) . "'";
-        }
-        
-        if ($search) {
-            $clean = $this->clean($search);
-            $sql .= " AND (nom_startup LIKE '%$clean%' OR email LIKE '%$clean%')";
-        }
-        
-        return (int)$this->db->query($sql)->fetchColumn();
-    }
-
-    // ── DATABASE: READ ONE STARTUP (WITH USER JOIN) ────────────
-    private function readOneStartup(int $id): ?array
-    {
-        $sql = "SELECT 
-                    s.id, s.user_id, s.nom_startup, s.nom_responsable, s.prenom_responsable, 
-                    s.email, s.telephone, s.secteur, s.site_web, s.stade, s.statut, 
-                    s.date_inscription, s.derniere_connexion,
-                    u.nom as user_nom, u.prenom as user_prenom, u.email as user_email
-                FROM startups s
-                LEFT JOIN users u ON s.user_id = u.id
-                WHERE s.id = :id LIMIT 1";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':id' => $id]);
-        return $stmt->fetch() ?: null;
-    }
-
-    // ── DATABASE: READ BY EMAIL STARTUP ────────────────────────
-    private function readByEmailStartup(string $email): ?array
-    {
-        $stmt = $this->db->prepare("SELECT * FROM startups WHERE email = :email LIMIT 1");
-        $stmt->execute([':email' => $email]);
-        return $stmt->fetch() ?: null;
-    }
-
-    // ── DATABASE: CHECK EMAIL EXISTS STARTUP ───────────────────
-    private function emailExistsStartup(string $email, int $excludeId = 0): bool
-    {
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM startups WHERE email=:email AND id!=:id");
-        $stmt->execute([':email' => $email, ':id' => $excludeId]);
-        return (int)$stmt->fetchColumn() > 0;
-    }
-
-    // ── DATABASE: UPDATE STARTUP ───────────────────────────────
-    private function updateStartupDb(int $id, Startup $startup): bool
-    {
-        $pwPart = $startup->getPassword() ? ', password = :password' : '';
-        $stmt = $this->db->prepare(
-            "UPDATE startups SET
-                nom_startup=:nom_startup, nom_responsable=:nom_responsable,
-                prenom_responsable=:prenom_responsable, email=:email,
-                telephone=:telephone, secteur=:secteur, site_web=:site_web,
-                stade=:stade, statut=:statut {$pwPart}
-             WHERE id=:id"
-        );
-        $params = [
-            ':nom_startup'        => $this->clean($startup->getNomStartup()),
-            ':nom_responsable'    => $this->clean($startup->getNomResponsable()),
-            ':prenom_responsable' => $this->clean($startup->getPrenomResponsable()),
-            ':email'              => $this->clean($startup->getEmail()),
-            ':telephone'          => $startup->getTelephone() ? $this->clean($startup->getTelephone()) : null,
-            ':secteur'            => $startup->getSecteur() ? $this->clean($startup->getSecteur()) : null,
-            ':site_web'           => $startup->getSiteWeb() ? $this->clean($startup->getSiteWeb()) : null,
-            ':stade'              => $startup->getStade(),
-            ':statut'             => $startup->getStatut(),
-            ':id'                 => $id,
-        ];
-        if ($startup->getPassword()) $params[':password'] = password_hash($startup->getPassword(), PASSWORD_BCRYPT);
-        return $stmt->execute($params);
-    }
-
-    // ── DATABASE: DELETE STARTUP ───────────────────────────────
-    private function deleteStartupDb(int $id): bool
-    {
-        $stmt = $this->db->prepare("DELETE FROM startups WHERE id = :id");
-        return $stmt->execute([':id' => $id]);
-    }
-
-    // ── DATABASE: TOUCH LAST LOGIN STARTUP ─────────────────────
-    private function touchLastLoginStartup(int $id): void
-    {
-        $this->db->prepare("UPDATE startups SET derniere_connexion=NOW() WHERE id=:id")
-                 ->execute([':id' => $id]);
-    }
-
-    // ── DATABASE: GET STATS STARTUP ────────────────────────────
-    private function getStartupStats(): array
-    {
-        return $this->db->query(
-            "SELECT COUNT(*) AS total,
-                    SUM(statut='actif')   AS actifs,
-                    SUM(statut='verifie') AS verifiees
-             FROM startups"
-        )->fetch();
-    }
-
-    // ── CONTROLLER: LIST STARTUPS ──────────────────────────────
-    public function listStartups(): void
-    {
-        $limit  = (int)($_GET['limit']  ?? 8);
-        $page   = max(1, (int)($_GET['page']   ?? 1));
-        $offset = ($page - 1) * $limit;
-        $statut = $_GET['statut'] ?? '';
-        $search = $_GET['search'] ?? '';
-
-        $rows  = $this->readAllStartups($limit, $offset, $statut, $search);
-        $total = $this->countStartups($statut, $search);
-        $stats = $this->getStartupStats();
-
-        $_SESSION['startups_list'] = [
-            'data'    => $rows,
-            'total'   => $total,
-            'pages'   => (int)ceil($total / $limit),
-            'page'    => $page,
-            'stats'   => $stats,
-        ];
-    }
-
-    // ── CONTROLLER: GET STARTUP ────────────────────────────────
-    public function getStartup(int $id): void
-    {
-        if ($id <= 0) {
-            $_SESSION['startup_error'] = 'ID invalide.';
-            return;
-        }
-
-        $startup = $this->readOneStartup($id);
-        if (!$startup) {
-            $_SESSION['startup_error'] = 'Startup introuvable.';
-            return;
-        }
-
-        $_SESSION['startup_detail'] = $startup;
-    }
-
     // ── CONTROLLER: UPDATE STARTUP ─────────────────────────────
     public function updateStartupAction(int $id, array $d): void
     {
@@ -536,24 +450,25 @@ class UserController
             $_SESSION['form_errors'] = ['general' => 'ID invalide.'];
             return;
         }
-        if (!$this->readOneStartup($id)) {
+        $startup = $this->readOneUser($id);
+        if (!$startup || $startup['role'] !== 'startup') {
             $_SESSION['form_errors'] = ['general' => 'Startup introuvable.'];
             return;
         }
 
         $this->v
-            ->required('nom_startup',      $d['nom_startup']      ?? '', 'Le nom')
-            ->minLen  ('nom_startup',      $d['nom_startup']      ?? '', 2, 'Le nom')
-            ->required('nom_responsable',  $d['nom_responsable']  ?? '', 'Le nom du responsable')
-            ->minLen  ('nom_responsable',  $d['nom_responsable']  ?? '', 2, 'Le nom du responsable')
+            ->required('nom_startup',       $d['nom_startup']       ?? '', 'Le nom')
+            ->minLen  ('nom_startup',       $d['nom_startup']       ?? '', 2, 'Le nom')
+            ->required('nom_responsable',   $d['nom_responsable']   ?? '', 'Le nom du responsable')
+            ->minLen  ('nom_responsable',   $d['nom_responsable']   ?? '', 2, 'Le nom du responsable')
             ->required('prenom_responsable', $d['prenom_responsable'] ?? '', 'Le prénom du responsable')
             ->minLen  ('prenom_responsable', $d['prenom_responsable'] ?? '', 2, 'Le prénom du responsable')
-            ->required('email',            $d['email']            ?? '', "L'email")
-            ->email   ('email',            $d['email']            ?? '')
-            ->phone   ('telephone',        $d['telephone']        ?? null)
-            ->inList  ('secteur',          $d['secteur']          ?? '', ['tech','sante','fintech','logistique','retail','autre'], 'Le secteur')
-            ->inList  ('stade',            $d['stade']            ?? 'idee', ['idee','MVP','beta','prod'], 'Le stade')
-            ->inList  ('statut',           $d['statut']           ?? 'actif', ['actif','inactif','banni'], 'Le statut');
+            ->required('email',             $d['email']             ?? '', "L'email")
+            ->email   ('email',             $d['email']             ?? '')
+            ->phone   ('telephone',         $d['telephone']         ?? null)
+            ->inList  ('secteur',           $d['secteur']           ?? '', ['tech','sante','fintech','logistique','retail','autre'], 'Le secteur')
+            ->inList  ('stade',             $d['stade']             ?? 'idee', ['idee','prototype','mvp','croissance','scale'], 'Le stade')
+            ->inList  ('statut',            $d['statut']            ?? 'actif', ['actif','inactif','banni','verifie'], 'Le statut');
 
         if (!empty($d['password'])) {
             $this->v->password('password', $d['password'])
@@ -566,27 +481,33 @@ class UserController
             return;
         }
 
-        if ($this->emailExistsStartup($d['email'], $id)) {
+        if ($this->emailExists($d['email'], $id)) {
             $_SESSION['form_errors'] = ['email' => 'Cet email est déjà utilisé par une autre startup.'];
             $_SESSION['form_data'] = $d;
             return;
         }
 
-        $startup = new Startup(
+        $user = new User(
             $id,
-            $d['nom_startup'],
             $d['nom_responsable'],
             $d['prenom_responsable'],
             $d['email'],
             !empty($d['password']) ? $d['password'] : null,
             $d['telephone'] ?? null,
+            null, // date_naissance not used for startups
+            'startup',
+            $d['statut'] ?? 'actif',
+            null,
+            null,
+            $d['nom_startup'],
+            $d['nom_responsable'],
+            $d['prenom_responsable'],
             $d['secteur'] ?? null,
             $d['site_web'] ?? null,
-            $d['stade'] ?? 'idee',
-            $d['statut'] ?? 'actif'
+            $d['stade'] ?? 'idee'
         );
 
-        $ok = $this->updateStartupDb($id, $startup);
+        $ok = $this->updateUserDb($id, $user);
         if ($ok) {
             $_SESSION['success'] = 'Startup mise à jour.';
             unset($_SESSION['form_data'], $_SESSION['form_errors']);
@@ -594,89 +515,4 @@ class UserController
             $_SESSION['form_errors'] = ['general' => 'Erreur lors de la mise à jour.'];
         }
     }
-
-    // ── CONTROLLER: DELETE STARTUP ─────────────────────────────
-    public function deleteStartupAction(int $id): void
-    {
-        if ($id <= 0) {
-            $_SESSION['form_errors'] = ['general' => 'ID invalide.'];
-            return;
-        }
-        if (!$this->readOneStartup($id)) {
-            $_SESSION['form_errors'] = ['general' => 'Startup introuvable.'];
-            return;
-        }
-
-        $ok = $this->deleteStartupDb($id);
-        if ($ok) {
-            $_SESSION['success'] = 'Startup supprimée.';
-        } else {
-            $_SESSION['form_errors'] = ['general' => 'Erreur lors de la suppression.'];
-        }
-    }
-
-    // ── DATABASE: JOIN STARTUPS WITH USERS ─────────────────────
-    private function readAllStartupsWithUsers(int $limit = 10, int $offset = 0, string $statut = '', string $search = ''): array
-    {
-        $sql = "SELECT 
-                    s.id, s.user_id, s.nom_startup, s.nom_responsable, s.prenom_responsable, 
-                    s.email, s.telephone, s.secteur, s.site_web, s.stade, s.statut, 
-                    s.date_inscription, s.derniere_connexion,
-                    u.id as user_id_link, u.nom as user_nom, u.prenom as user_prenom, u.email as user_email
-                FROM startups s
-                LEFT JOIN users u ON s.user_id = u.id
-                WHERE 1=1";
-        
-        if ($statut) {
-            $sql .= " AND s.statut = '" . $this->clean($statut) . "'";
-        }
-        
-        if ($search) {
-            $clean = $this->clean($search);
-            $sql .= " AND (s.nom_startup LIKE '%$clean%' OR s.email LIKE '%$clean%' OR u.nom LIKE '%$clean%')";
-        }
-        
-        $sql .= " ORDER BY s.id DESC LIMIT :limit OFFSET :offset";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll();
-    }
-
-    // ── DATABASE: READ ONE STARTUP WITH USER ────────────────────
-    private function readOneStartupWithUser(int $id): ?array
-    {
-        $sql = "SELECT 
-                    s.id, s.user_id, s.nom_startup, s.nom_responsable, s.prenom_responsable, 
-                    s.email, s.telephone, s.secteur, s.site_web, s.stade, s.statut, 
-                    s.date_inscription, s.derniere_connexion,
-                    u.id as user_id_link, u.nom as user_nom, u.prenom as user_prenom, u.email as user_email
-                FROM startups s
-                LEFT JOIN users u ON s.user_id = u.id
-                WHERE s.id = :id LIMIT 1";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':id' => $id]);
-        return $stmt->fetch() ?: null;
-    }
-
-    // ── DATABASE: GET STARTUPS BY USER ─────────────────────────
-    private function readStartupsByUser(int $user_id): array
-    {
-        $sql = "SELECT 
-                    s.id, s.user_id, s.nom_startup, s.nom_responsable, s.prenom_responsable, 
-                    s.email, s.secteur, s.site_web, s.stade, s.statut, s.date_inscription
-                FROM startups s
-                WHERE s.user_id = :user_id
-                ORDER BY s.date_inscription DESC";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':user_id' => $user_id]);
-        return $stmt->fetchAll();
-    }
-
 }
-
-

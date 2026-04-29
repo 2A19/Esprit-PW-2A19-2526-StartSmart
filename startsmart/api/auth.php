@@ -1,11 +1,11 @@
 <?php
 /**
- * api/auth.php – Authentication endpoints (Form-based, No JSON)
- *
+ * api/auth.php – Authentication endpoints
  * POST ?action=login
  * POST ?action=register_user
  * POST ?action=register_startup
  * POST ?action=logout
+ * GET  ?action=verify_email&token=...
  */
 
 if (session_status() === PHP_SESSION_NONE) session_start();
@@ -15,7 +15,7 @@ require_once __DIR__ . '/../controllers/AuthController.php';
 $controller = new AuthController();
 $action     = $_GET['action'] ?? '';
 
-switch($action) {
+switch ($action) {
     case 'login':
         $controller->login();
         break;
@@ -25,6 +25,9 @@ switch($action) {
     case 'register_startup':
         $controller->registerStartup();
         break;
+    case 'verify_email':
+        $controller->verifyEmailToken();
+        break;
     case 'logout':
         $controller->logout();
         break;
@@ -32,4 +35,3 @@ switch($action) {
         header('Location: /startsmart/views/auth/login.php');
         exit;
 }
-

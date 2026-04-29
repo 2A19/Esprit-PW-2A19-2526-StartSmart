@@ -14,29 +14,66 @@ if($isLoggedIn){
   
   // Handle profile update
   if($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['save_profile'])){
-    $nom = trim($_POST['nom'] ?? '');
-    $prenom = trim($_POST['prenom'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $telephone = trim($_POST['telephone'] ?? '');
-    $dob = trim($_POST['date_naissance'] ?? '');
+    $role = $user['role'] ?? 'user';
     
-    if($nom && $prenom && $email){
-      $userController->updateUserAction($_SESSION['user_id'], [
-        'nom' => $nom,
-        'prenom' => $prenom,
-        'email' => $email,
-        'telephone' => $telephone,
-        'date_naissance' => $dob,
-        'role' => $user['role'],
-        'statut' => $user['statut']
-      ]);
+    if($role === 'startup'){
+      // Startup profile update
+      $nom_startup = trim($_POST['nom_startup'] ?? '');
+      $nom_responsable = trim($_POST['nom_responsable'] ?? '');
+      $prenom_responsable = trim($_POST['prenom_responsable'] ?? '');
+      $email = trim($_POST['email'] ?? '');
+      $telephone = trim($_POST['telephone'] ?? '');
+      $secteur = trim($_POST['secteur'] ?? '');
+      $site_web = trim($_POST['site_web'] ?? '');
+      $stade = trim($_POST['stade'] ?? '');
       
-      if(!empty($_SESSION['success'])){
-        $_SESSION['user_name'] = "$prenom $nom";
-        $userController->getUser($_SESSION['user_id']);
-        $user = $_SESSION['user_detail'];
-        $name = $_SESSION['user_name'];
-        echo '<script>showToast("✅ Profil mis à jour avec succès!")</script>';
+      if($nom_startup && $nom_responsable && $prenom_responsable && $email){
+        $userController->updateStartupAction($_SESSION['user_id'], [
+          'nom_startup' => $nom_startup,
+          'nom_responsable' => $nom_responsable,
+          'prenom_responsable' => $prenom_responsable,
+          'email' => $email,
+          'telephone' => $telephone,
+          'secteur' => $secteur,
+          'site_web' => $site_web,
+          'stade' => $stade,
+          'statut' => $user['statut']
+        ]);
+        
+        if(!empty($_SESSION['success'])){
+          $_SESSION['user_name'] = $nom_startup;
+          $userController->getUser($_SESSION['user_id']);
+          $user = $_SESSION['user_detail'];
+          $name = $_SESSION['user_name'];
+          echo '<script>showToast("✅ Profil startup mis à jour avec succès!")</script>';
+        }
+      }
+    } else {
+      // Regular user profile update
+      $nom = trim($_POST['nom'] ?? '');
+      $prenom = trim($_POST['prenom'] ?? '');
+      $email = trim($_POST['email'] ?? '');
+      $telephone = trim($_POST['telephone'] ?? '');
+      $dob = trim($_POST['date_naissance'] ?? '');
+      
+      if($nom && $prenom && $email){
+        $userController->updateUserAction($_SESSION['user_id'], [
+          'nom' => $nom,
+          'prenom' => $prenom,
+          'email' => $email,
+          'telephone' => $telephone,
+          'date_naissance' => $dob,
+          'role' => $user['role'],
+          'statut' => $user['statut']
+        ]);
+        
+        if(!empty($_SESSION['success'])){
+          $_SESSION['user_name'] = "$prenom $nom";
+          $userController->getUser($_SESSION['user_id']);
+          $user = $_SESSION['user_detail'];
+          $name = $_SESSION['user_name'];
+          echo '<script>showToast("✅ Profil mis à jour avec succès!")</script>';
+        }
       }
     }
   }
@@ -254,6 +291,51 @@ function closeProfileModal() {
   document.getElementById('profile-modal').style.display = 'none';
 }
 
+function uploadFrontProfilePhoto() {
+  const file = document.getElementById('frontProfilePhoto').files[0];
+  const msgEl = document.getElementById('frontPhotoMessage');
+  
+  if (!file) {
+    msgEl.style.display = 'none';
+    return;
+  }
+  
+  if (file.size > 5 * 1024 * 1024) {
+    msgEl.innerHTML = '<span style="color:#d32f2f;">⚠️ Fichier trop volumineux (max 5MB)</span>';
+    msgEl.style.display = 'block';
+    return;
+  }
+  
+  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    msgEl.innerHTML = '<span style="color:#d32f2f;">⚠️ Type non autorisé (PNG, JPG, GIF, WebP)</span>';
+    msgEl.style.display = 'block';
+    return;
+  }
+  
+  msgEl.innerHTML = '<span style="color:#1976d2;">⏳ Téléchargement en cours...</span>';
+  msgEl.style.display = 'block';
+  
+  const formData = new FormData();
+  formData.append('profile_picture', file);
+  
+  fetch('../../api/upload.php?action=upload_profile_picture', {method: 'POST', body: formData})
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        msgEl.innerHTML = '<span style="color:#388e3c;">✅ ' + d.message + '</span>';
+        document.getElementById('modalProfileImg').src = d.photo_url;
+        document.getElementById('frontProfilePhoto').value = '';
+        setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
+      } else {
+        msgEl.innerHTML = '<span style="color:#d32f2f;">❌ ' + (d.error || 'Erreur') + '</span>';
+      }
+    })
+    .catch(e => {
+      msgEl.innerHTML = '<span style="color:#d32f2f;">❌ Erreur réseau</span>';
+    });
+}
+
 window.onclick = function(event) {
   const modal = document.getElementById('profile-modal');
   if(event.target === modal) {
@@ -273,38 +355,108 @@ window.onclick = function(event) {
     
     <!-- Modal Body -->
     <div style="padding:2rem;">
+      <div style="text-align:center; margin-bottom:2rem;">
+        <?php if($user && ($user['profile_picture'] ?? null)): ?>
+        <img id="modalProfileImg" src="<?= htmlspecialchars($user['profile_picture']) ?>" alt="Photo" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid #3b8cf7;">
+        <?php else: ?>
+        <div id="modalProfileImg" style="width:100px; height:100px; border-radius:50%; background:#ddd; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:2rem; color:#999;">👤</div>
+        <?php endif; ?>
+        <div style="margin-top:1rem;">
+          <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Photo de profil</label>
+          <input type="file" id="frontProfilePhoto" accept="image/*" onchange="uploadFrontProfilePhoto()" style="width:100%; padding:.5rem; border:1px solid #ddd; border-radius:6px;">
+          <div id="frontPhotoMessage" style="margin-top:0.5rem; font-size:.85rem; display:none;"></div>
+        </div>
+      </div>
+      
       <form method="POST" style="display:grid; gap:1.5rem;">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+        <?php if(($user['role'] ?? 'user') === 'startup'): ?>
+          <!-- Startup Profile Form -->
           <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Prénom *</label>
-            <input type="text" name="prenom" value="<?= htmlspecialchars($user['prenom'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Nom de la Startup *</label>
+            <input type="text" name="nom_startup" value="<?= htmlspecialchars($user['nom_startup'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
           </div>
-          <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Nom *</label>
-            <input type="text" name="nom" value="<?= htmlspecialchars($user['nom'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div>
+              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Nom du Responsable *</label>
+              <input type="text" name="nom_responsable" value="<?= htmlspecialchars($user['nom_responsable'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Prénom du Responsable *</label>
+              <input type="text" name="prenom_responsable" value="<?= htmlspecialchars($user['prenom_responsable'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+            </div>
           </div>
-        </div>
 
-        <div>
-          <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Email *</label>
-          <input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-        </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
           <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Téléphone</label>
-            <input type="text" name="telephone" value="<?= htmlspecialchars($user['telephone'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Email *</label>
+            <input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
           </div>
-          <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Date de naissance</label>
-            <input type="date" name="date_naissance" value="<?= htmlspecialchars($user['date_naissance'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-          </div>
-        </div>
 
-        <div>
-          <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Rôle</label>
-          <input type="text" value="<?= htmlspecialchars($user['role'] ?? '') ?>" disabled style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem; background:#f0f0f0; cursor:not-allowed; color:#999;">
-        </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div>
+              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Téléphone</label>
+              <input type="text" name="telephone" value="<?= htmlspecialchars($user['telephone'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Secteur</label>
+              <input type="text" name="secteur" value="<?= htmlspecialchars($user['secteur'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+            </div>
+          </div>
+
+          <div>
+            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Site Web</label>
+            <input type="url" name="site_web" value="<?= htmlspecialchars($user['site_web'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+          </div>
+
+          <div>
+            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Stade de développement</label>
+            <select name="stade" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+              <option value="idee" <?= ($user['stade'] ?? '') === 'idee' ? 'selected' : '' ?>>Idée</option>
+              <option value="prototype" <?= ($user['stade'] ?? '') === 'prototype' ? 'selected' : '' ?>>Prototype</option>
+              <option value="mvp" <?= ($user['stade'] ?? '') === 'mvp' ? 'selected' : '' ?>>MVP</option>
+              <option value="croissance" <?= ($user['stade'] ?? '') === 'croissance' ? 'selected' : '' ?>>Croissance</option>
+              <option value="scale" <?= ($user['stade'] ?? '') === 'scale' ? 'selected' : '' ?>>Scale</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Rôle</label>
+            <input type="text" value="Startup" disabled style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem; background:#f0f0f0; cursor:not-allowed; color:#999;">
+          </div>
+        <?php else: ?>
+          <!-- Regular User Profile Form -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div>
+              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Prénom *</label>
+              <input type="text" name="prenom" value="<?= htmlspecialchars($user['prenom'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Nom *</label>
+              <input type="text" name="nom" value="<?= htmlspecialchars($user['nom'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+            </div>
+          </div>
+
+          <div>
+            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Email *</label>
+            <input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div>
+              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Téléphone</label>
+              <input type="text" name="telephone" value="<?= htmlspecialchars($user['telephone'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Date de naissance</label>
+              <input type="date" name="date_naissance" value="<?= htmlspecialchars($user['date_naissance'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
+            </div>
+          </div>
+
+          <div>
+            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Rôle</label>
+            <input type="text" value="<?= htmlspecialchars($user['role'] ?? '') ?>" disabled style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem; background:#f0f0f0; cursor:not-allowed; color:#999;">
+          </div>
+        <?php endif; ?>
 
         <div style="display:flex; gap:1rem; margin-top:1.5rem;">
           <button type="submit" name="save_profile" value="1" style="flex:1; padding:.75rem; background:#3b8cf7; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:.9rem;">💾 Enregistrer</button>

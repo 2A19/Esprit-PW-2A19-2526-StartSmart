@@ -1,6 +1,7 @@
 <?php
 /**
- * api/users.php – Entry point for user/startup management (Form-based)
+ * api/users.php – Entry point for user management (Form-based)
+ * Now handles both regular users and startup accounts (role='startup' in users table)
  * Accepts form submissions and redirects back to dashboard
  */
 
@@ -39,13 +40,6 @@ if ($action === 'update_user' && $method === 'POST') {
     exit;
 }
 
-if ($action === 'update_startup' && $method === 'POST') {
-    $id = (int)($_POST['id'] ?? 0);
-    $controller->updateStartupAction($id, $_POST);
-    header('Location: /startsmart/views/back/dashboard.php?tab=startups');
-    exit;
-}
-
 if ($action === 'delete_user' && $method === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
     $controller->deleteUserAction($id);
@@ -53,16 +47,23 @@ if ($action === 'delete_user' && $method === 'POST') {
     exit;
 }
 
-// Handle startup actions
+// Handle startup actions (now using the same User structure)
 if ($action === 'list_startups' && $method === 'GET') {
     $controller->listStartups();
     header('Location: /startsmart/views/back/dashboard.php?tab=startups');
     exit;
 }
 
+if ($action === 'update_startup' && $method === 'POST') {
+    $id = (int)($_POST['id'] ?? 0);
+    $controller->updateStartupAction($id, $_POST);
+    header('Location: /startsmart/views/back/dashboard.php?tab=startups');
+    exit;
+}
+
 if ($action === 'delete_startup' && $method === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
-    $controller->deleteStartupAction($id);
+    $controller->deleteUserAction($id); // Use same delete, just check role
     header('Location: /startsmart/views/back/dashboard.php?tab=startups');
     exit;
 }
