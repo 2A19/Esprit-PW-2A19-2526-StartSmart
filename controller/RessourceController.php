@@ -197,6 +197,41 @@ class RessourceController {
     }
     
     /**
+     * Recherche des ressources par nom
+     * @param string $search Terme de recherche
+     * @return array
+     */
+    public function search($search) {
+        return $this->ressource->searchByName($search);
+    }
+    
+    /**
+     * Récupère les ressources triées par statut
+     * @return array
+     */
+    public function sortByStatus() {
+        return $this->ressource->sortByStatus();
+    }
+    
+    /**
+     * Récupère les ressources triées par première lettre du nom
+     * @return array
+     */
+    public function sortByFirstLetter() {
+        return $this->ressource->sortByFirstLetter();
+    }
+    
+    /**
+     * Recherche et trie les ressources
+     * @param string $search Terme de recherche
+     * @param string $sortBy Type de tri: 'statut', 'lettre', ou 'date'
+     * @return array
+     */
+    public function searchAndSort($search = '', $sortBy = 'date') {
+        return $this->ressource->searchAndSort($search, $sortBy);
+    }
+    
+    /**
      * Récupère les erreurs
      * @return array
      */

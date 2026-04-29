@@ -89,7 +89,18 @@ switch ($page) {
     case 'backoffice':
     case 'ressource-list':
         $title = 'Gestion des Ressources';
-        $ressources = $ressourceController->index();
+        
+        // Récupérer les paramètres de recherche et de tri
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $sortBy = isset($_GET['sort']) ? $_GET['sort'] : 'date';
+        
+        // Récupérer les ressources en fonction de la recherche et du tri
+        if (!empty($search) || $sortBy !== 'date') {
+            $ressources = $ressourceController->searchAndSort($search, $sortBy);
+        } else {
+            $ressources = $ressourceController->index();
+        }
+        
         ob_start();
         include __DIR__ . '/view/layout.php';
         include __DIR__ . '/view/backoffice/ressource-list.php';

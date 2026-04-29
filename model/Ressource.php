@@ -219,5 +219,93 @@ class Ressource {
         
         return $stmt->fetch();
     }
+    
+    /**
+     * Recherche des ressources par nom
+     * @param string $search Terme de recherche
+     * @return array
+     */
+    public function searchByName($search) {
+        $sql = "SELECT r.*, s.nom_sponsor 
+                FROM " . $this->table . " r
+                LEFT JOIN sponsors s ON r.id_sponsor = s.id_sponsor
+                WHERE r.nom_ressource LIKE :search
+                ORDER BY r.nom_ressource ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':search' => '%' . $search . '%']);
+        
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Récupère les ressources triées par statut
+     * @return array
+     */
+    public function sortByStatus() {
+        $sql = "SELECT r.*, s.nom_sponsor 
+                FROM " . $this->table . " r
+                LEFT JOIN sponsors s ON r.id_sponsor = s.id_sponsor
+                ORDER BY r.statut ASC, r.nom_ressource ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Récupère les ressources triées par première lettre du nom
+     * @return array
+     */
+    public function sortByFirstLetter() {
+        $sql = "SELECT r.*, s.nom_sponsor 
+                FROM " . $this->table . " r
+                LEFT JOIN sponsors s ON r.id_sponsor = s.id_sponsor
+                ORDER BY UPPER(LEFT(r.nom_ressource, 1)) ASC, r.nom_ressource ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Recherche et trie les ressources
+     * @param string $search Terme de recherche (optionnel)
+     * @param string $sortBy Type de tri: 'statut', 'lettre', ou 'date'
+     * @return array
+     */
+    public function searchAndSort($search = '', $sortBy = 'date') {
+        $sql = "SELECT r.*, s.nom_sponsor 
+                FROM " . $this->table . " r
+                LEFT JOIN sponsors s ON r.id_sponsor = s.id_sponsor";
+        
+        if (!empty($search)) {
+            $sql .= " WHERE r.nom_ressource LIKE :search";
+        }
+        
+        switch ($sortBy) {
+            case 'statut':
+                $sql .= " ORDER BY r.statut ASC, r.nom_ressource ASC";
+                break;
+            case 'lettre':
+                $sql .= " ORDER BY UPPER(LEFT(r.nom_ressource, 1)) ASC, r.nom_ressource ASC";
+                break;
+            case 'date':
+            default:
+                $sql .= " ORDER BY r.date_ajout DESC";
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        
+        if (!empty($search)) {
+            $stmt->execute([':search' => '%' . $search . '%']);
+        } else {
+            $stmt->execute();
+        }
+        
+        return $stmt->fetchAll();
+    }
 }
 ?>
