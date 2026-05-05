@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="<?php echo (isset($is_admin) && $is_admin === true) ? 'admin-page' : ''; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $title ?? 'StartSmart - Gestion des Ressources'; ?></title>
     <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
+<body class="<?php echo (isset($is_admin) && $is_admin === true) ? 'admin-page' : ''; ?>">
     <header>
         <div class="container">
             <div class="logo">StartSmart</div>
@@ -57,6 +58,13 @@
         <?php
             endforeach;
             unset($_SESSION['warning']);
+        endif;
+        ?>
+
+        <?php
+        // Afficher le menu admin si on est en mode admin
+        if (isset($is_admin) && $is_admin === true):
+            include __DIR__ . '/backoffice/admin-menu.php';
         endif;
         ?>
 

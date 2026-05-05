@@ -15,7 +15,7 @@ $sponsors = $sponsorModel->getActive();
     <form method="POST" action="index.php?page=ressource-store" id="ressourceForm">
         <div class="form-group">
             <label for="id_sponsor">Sponsor *</label>
-            <select id="id_sponsor" name="id_sponsor" required>
+            <select id="id_sponsor" name="id_sponsor">
                 <option value="">-- Sélectionner un sponsor --</option>
                 <?php foreach ($sponsors as $sponsor): ?>
                     <option value="<?php echo $sponsor['id_sponsor']; ?>"
@@ -35,7 +35,6 @@ $sponsors = $sponsorModel->getActive();
                 type="text" 
                 id="nom_ressource" 
                 name="nom_ressource" 
-                required
                 placeholder="Ex: Audit Financier, Formation ISO, Infrastructure Cloud"
                 value="<?php echo isset($_POST['nom_ressource']) ? htmlspecialchars($_POST['nom_ressource']) : ''; ?>"
             >
@@ -46,7 +45,7 @@ $sponsors = $sponsorModel->getActive();
 
         <div class="form-group">
             <label for="type_ressource">Type de Ressource *</label>
-            <select id="type_ressource" name="type_ressource" required>
+            <select id="type_ressource" name="type_ressource">
                 <option value="">-- Sélectionner un type --</option>
                 <option value="Services" <?php echo (isset($_POST['type_ressource']) && $_POST['type_ressource'] == 'Services') ? 'selected' : ''; ?>>Services</option>
                 <option value="Formation" <?php echo (isset($_POST['type_ressource']) && $_POST['type_ressource'] == 'Formation') ? 'selected' : ''; ?>>Formation</option>
@@ -72,12 +71,10 @@ $sponsors = $sponsorModel->getActive();
         <div class="form-group">
             <label for="quantite_disponible">Quantité Disponible *</label>
             <input 
-                type="number" 
+                type="text" 
                 id="quantite_disponible" 
                 name="quantite_disponible" 
-                min="1"
                 value="<?php echo isset($_POST['quantite_disponible']) ? htmlspecialchars($_POST['quantite_disponible']) : ''; ?>"
-                required
             >
             <?php if (isset($errors['quantite_disponible'])): ?>
                 <div class="form-error"><?php echo htmlspecialchars($errors['quantite_disponible']); ?></div>

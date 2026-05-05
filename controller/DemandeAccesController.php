@@ -60,6 +60,28 @@ class DemandeAccesController {
             return false;
         }
         
+        // Récupérer ou créer l'utilisateur
+        $userName = trim($data['id_utilisateur']);
+        $user = $this->utilisateur->getByNom($userName);
+        
+        if (!$user) {
+            // Créer un nouvel utilisateur
+            $userData = [
+                'nom_utilisateur' => $userName,
+                'email_utilisateur' => null,
+                'entreprise' => 'Non spécifiée',
+                'statut' => 'actif'
+            ];
+            
+            $userId = $this->utilisateur->create($userData);
+            if (!$userId) {
+                $this->errors[] = "Erreur lors de la création de l'utilisateur";
+                return false;
+            }
+        } else {
+            $userId = $user['id_utilisateur'];
+        }
+        
         // Vérifier que la ressource existe et est disponible
         $ressource = $this->ressource->getById(intval($data['id_ressource']));
         if (!$ressource) {
@@ -82,7 +104,7 @@ class DemandeAccesController {
         
         // Nettoyage des données
         $cleanData = [
-            'id_utilisateur' => intval($data['id_utilisateur']),
+            'id_utilisateur' => $userId,
             'id_ressource' => intval($data['id_ressource']),
             'quantite_demandee' => $quantite,
             'description_demande' => Validator::sanitize($data['description_demande'] ?? ''),

@@ -34,8 +34,7 @@
                 <?php foreach ($demandesEnAttente as $demande): ?>
                     <tr>
                         <td>
-                            <strong><?php echo htmlspecialchars($demande['nom_utilisateur']); ?></strong><br>
-                            <small><?php echo htmlspecialchars($demande['email_utilisateur']); ?></small>
+                            <strong><?php echo htmlspecialchars($demande['nom_utilisateur']); ?></strong>
                         </td>
                         <td><?php echo htmlspecialchars($demande['entreprise']); ?></td>
                         <td><?php echo htmlspecialchars($demande['nom_ressource']); ?></td>

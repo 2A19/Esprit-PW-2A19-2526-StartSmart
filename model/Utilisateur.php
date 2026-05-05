@@ -84,6 +84,20 @@ class Utilisateur {
     }
     
     /**
+     * Récupère un utilisateur par son nom
+     * @param string $nom Le nom de l'utilisateur
+     * @return array|false
+     */
+    public function getByNom($nom) {
+        $sql = "SELECT * FROM " . $this->table . " WHERE nom_utilisateur = :nom";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':nom' => $nom]);
+        
+        return $stmt->fetch();
+    }
+    
+    /**
      * Met à jour un utilisateur
      * @param int $id_utilisateur L'ID de l'utilisateur
      * @param array $data Les données à mettre à jour

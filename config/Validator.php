@@ -55,6 +55,23 @@ class Validator {
     }
     
     /**
+     * Valide un email
+     * @param string $field Le champ à valider
+     * @param string $label Le libellé du champ
+     * @return $this
+     */
+    public function email($field, $label = null) {
+        $value = $this->data[$field] ?? '';
+        $label = $label ?? ucfirst($field);
+        
+        if (!empty($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            $this->errors[$field] = "$label doit être une adresse email valide";
+        }
+        
+        return $this;
+    }
+    
+    /**
      * Valide la longueur minimum
      * @param string $field Le champ à valider
      * @param int $min Longueur minimale

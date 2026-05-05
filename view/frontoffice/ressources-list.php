@@ -8,6 +8,89 @@
 </div>
 
 <?php if (!empty($ressources)): ?>
+    <!-- Statistics Section -->
+    <div class="stats-container">
+        <div class="stats-card">
+            <h2>Aperçu des Ressources par Type</h2>
+            <div class="stats-content">
+                <div class="stats-chart">
+                    <canvas id="ressourcesChart"></canvas>
+                </div>
+                <div class="stats-info">
+                    <?php
+                    // Count resources by type
+                    $types_count = [];
+                    $colors = [
+                        '#7dd442', '#2c4a8d', '#1d2f5a', '#17a2b8', '#ffc107', 
+                        '#28a745', '#dc3545', '#6f42c1', '#e83e8c', '#fd7e14'
+                    ];
+                    
+                    foreach ($ressources as $r) {
+                        $type = $r['type_ressource'];
+                        if (!isset($types_count[$type])) {
+                            $types_count[$type] = 0;
+                        }
+                        $types_count[$type]++;
+                    }
+                    
+                    $total_ressources = count($ressources);
+                    ?>
+                    <div class="stat-item">
+                        <span class="stat-label">Total de Ressources</span>
+                        <span class="stat-value"><?php echo $total_ressources; ?></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Types Différents</span>
+                        <span class="stat-value"><?php echo count($types_count); ?></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('ressourcesChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [<?php 
+                        foreach ($types_count as $type => $count) {
+                            echo "'" . htmlspecialchars($type) . "', ";
+                        }
+                    ?>],
+                    datasets: [{
+                        data: [<?php 
+                            foreach ($types_count as $type => $count) {
+                                echo $count . ", ";
+                            }
+                        ?>],
+                        backgroundColor: [
+                            '<?php echo implode("', '", array_slice($colors, 0, count($types_count))); ?>'
+                        ],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: 13
+                                },
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
     <div class="row">
         <?php foreach ($ressources as $ressource): ?>
             <div class="col">

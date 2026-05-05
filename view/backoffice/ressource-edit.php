@@ -15,7 +15,7 @@ $sponsors = $sponsorModel->getActive();
     <form method="POST" action="index.php?page=ressource-update&id=<?php echo $ressource['id_ressource']; ?>" id="ressourceForm">
         <div class="form-group">
             <label for="id_sponsor">Sponsor *</label>
-            <select id="id_sponsor" name="id_sponsor" required disabled>
+            <select id="id_sponsor" name="id_sponsor" disabled>
                 <?php foreach ($sponsors as $sponsor): ?>
                     <option value="<?php echo $sponsor['id_sponsor']; ?>"
                         <?php echo ($sponsor['id_sponsor'] == $ressource['id_sponsor']) ? 'selected' : ''; ?>>
@@ -32,7 +32,6 @@ $sponsors = $sponsorModel->getActive();
                 type="text" 
                 id="nom_ressource" 
                 name="nom_ressource" 
-                required
                 value="<?php echo htmlspecialchars($ressource['nom_ressource']); ?>"
             >
             <?php if (isset($errors['nom_ressource'])): ?>
@@ -42,7 +41,7 @@ $sponsors = $sponsorModel->getActive();
 
         <div class="form-group">
             <label for="type_ressource">Type de Ressource *</label>
-            <select id="type_ressource" name="type_ressource" required>
+            <select id="type_ressource" name="type_ressource">
                 <option value="Services" <?php echo ($ressource['type_ressource'] == 'Services') ? 'selected' : ''; ?>>Services</option>
                 <option value="Formation" <?php echo ($ressource['type_ressource'] == 'Formation') ? 'selected' : ''; ?>>Formation</option>
                 <option value="Infrastructure" <?php echo ($ressource['type_ressource'] == 'Infrastructure') ? 'selected' : ''; ?>>Infrastructure</option>
@@ -66,12 +65,10 @@ $sponsors = $sponsorModel->getActive();
         <div class="form-group">
             <label for="quantite_disponible">Quantité Disponible *</label>
             <input 
-                type="number" 
+                type="text" 
                 id="quantite_disponible" 
                 name="quantite_disponible" 
-                min="1"
                 value="<?php echo $ressource['quantite_disponible']; ?>"
-                required
             >
             <?php if (isset($errors['quantite_disponible'])): ?>
                 <div class="form-error"><?php echo htmlspecialchars($errors['quantite_disponible']); ?></div>
@@ -81,7 +78,7 @@ $sponsors = $sponsorModel->getActive();
 
         <div class="form-group">
             <label for="statut">Statut *</label>
-            <select id="statut" name="statut" required>
+            <select id="statut" name="statut">
                 <option value="disponible" <?php echo ($ressource['statut'] == 'disponible') ? 'selected' : ''; ?>>Disponible</option>
                 <option value="indisponible" <?php echo ($ressource['statut'] == 'indisponible') ? 'selected' : ''; ?>>Indisponible</option>
                 <option value="archive" <?php echo ($ressource['statut'] == 'archive') ? 'selected' : ''; ?>>Archivée</option>

@@ -9,10 +9,12 @@ session_start();
 // Charger les contrôleurs
 require_once __DIR__ . '/controller/RessourceController.php';
 require_once __DIR__ . '/controller/DemandeAccesController.php';
+require_once __DIR__ . '/controller/SponsorController.php';
 
 // Initialiser les contrôleurs
 $ressourceController = new RessourceController();
 $demandeController = new DemandeAccesController();
+$sponsorController = new SponsorController();
 
 // Récupérer la page demandée
 $page = $_GET['page'] ?? 'accueil';
@@ -25,6 +27,7 @@ $ressource = [];
 $demande = [];
 $errors = [];
 $success = [];
+$is_admin = false;
 
 // Gestion des routes
 switch ($page) {
@@ -88,6 +91,7 @@ switch ($page) {
     // ============================================
     case 'backoffice':
     case 'ressource-list':
+        $is_admin = true;
         $title = 'Gestion des Ressources';
         
         // Récupérer les paramètres de recherche et de tri
@@ -108,6 +112,7 @@ switch ($page) {
         exit;
 
     case 'ressource-create':
+        $is_admin = true;
         $title = 'Créer une Ressource';
         $errors = [];
         ob_start();
@@ -137,6 +142,7 @@ switch ($page) {
         exit;
 
     case 'ressource-edit':
+        $is_admin = true;
         $id = $_GET['id'] ?? null;
         if ($id) {
             $ressource = $ressourceController->show($id);
@@ -183,6 +189,7 @@ switch ($page) {
     // BACKOFFICE - DEMANDES D'ACCÈS
     // ============================================
     case 'demande-list':
+        $is_admin = true;
         $title = 'Gestion des Demandes d\'Accès';
         $demandes = $demandeController->index();
         ob_start();
@@ -255,6 +262,93 @@ switch ($page) {
             }
         }
         header('Location: index.php?page=demande-list');
+        exit;
+
+    // ============================================
+    // BACKOFFICE - SPONSORS
+    // ============================================
+    case 'sponsor-list':
+        $is_admin = true;
+        $title = 'Gestion des Sponsors';
+        $sponsors = $sponsorController->index();
+        ob_start();
+        include __DIR__ . '/view/layout.php';
+        include __DIR__ . '/view/backoffice/sponsor-list.php';
+        ob_end_flush();
+        exit;
+
+    case 'sponsor-create':
+        $is_admin = true;
+        $title = 'Créer un Sponsor';
+        $errors = [];
+        ob_start();
+        include __DIR__ . '/view/layout.php';
+        include __DIR__ . '/view/backoffice/sponsor-create.php';
+        ob_end_flush();
+        exit;
+
+    case 'sponsor-store':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if ($sponsorController->store($_POST)) {
+                $_SESSION['success'][] = 'Sponsor créé avec succès!';
+                header('Location: index.php?page=sponsor-list');
+                exit;
+            } else {
+                $_SESSION['error'] = $sponsorController->getErrors();
+                $errors = $_SESSION['error'];
+                $title = 'Créer un Sponsor';
+                ob_start();
+                include __DIR__ . '/view/layout.php';
+                include __DIR__ . '/view/backoffice/sponsor-create.php';
+                ob_end_flush();
+                exit;
+            }
+        }
+        header('Location: index.php?page=sponsor-list');
+        exit;
+
+    case 'sponsor-edit':
+        $is_admin = true;
+        $id = $_GET['id'] ?? null;
+        if ($id) {
+            $sponsor = $sponsorController->show($id);
+            if ($sponsor) {
+                $title = 'Modifier un Sponsor';
+                $errors = [];
+                ob_start();
+                include __DIR__ . '/view/layout.php';
+                include __DIR__ . '/view/backoffice/sponsor-edit.php';
+                ob_end_flush();
+                exit;
+            }
+        }
+        header('Location: index.php?page=sponsor-list');
+        exit;
+
+    case 'sponsor-update':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_GET['id'] ?? null;
+            if ($id && $sponsorController->update($id, $_POST)) {
+                $_SESSION['success'][] = 'Sponsor mis à jour avec succès!';
+                header('Location: index.php?page=sponsor-list');
+                exit;
+            } else {
+                $_SESSION['error'] = $sponsorController->getErrors();
+                header('Location: index.php?page=sponsor-edit&id=' . $id);
+                exit;
+            }
+        }
+        header('Location: index.php?page=sponsor-list');
+        exit;
+
+    case 'sponsor-delete':
+        $id = $_GET['id'] ?? null;
+        if ($id && $sponsorController->delete($id)) {
+            $_SESSION['success'][] = 'Sponsor supprimé avec succès!';
+        } else {
+            $_SESSION['error'][] = 'Erreur lors de la suppression';
+        }
+        header('Location: index.php?page=sponsor-list');
         exit;
 
     // ============================================
