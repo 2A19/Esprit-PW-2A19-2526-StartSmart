@@ -1,9 +1,4 @@
 <?php
-
-/**
- * Startup Entity/DTO
- * Contains only properties with getters and setters
- */
 class Startup
 {
     private ?int $id;

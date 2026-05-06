@@ -67,7 +67,6 @@ class User
         $this->stade = $stade;
     }
 
-    // Getters and Setters
     public function getId(): ?int {
         return $this->id;
     }
@@ -163,8 +162,6 @@ class User
     public function setProfilePicture(?string $profile_picture): void {
         $this->profile_picture = $profile_picture;
     }
-
-    // Startup-specific getters and setters
     public function getNomStartup(): ?string {
         return $this->nom_startup;
     }

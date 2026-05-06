@@ -25,9 +25,20 @@ CREATE TABLE IF NOT EXISTS users (
     statut             ENUM('actif','inactif','banni','verifie','pending') DEFAULT 'pending',
     date_inscription   DATETIME      DEFAULT CURRENT_TIMESTAMP,
     derniere_connexion DATETIME      DEFAULT NULL,
+    google_id          VARCHAR(255)  DEFAULT NULL,
     -- Email verification
     email_token        VARCHAR(64)   DEFAULT NULL,
     email_token_expires DATETIME     DEFAULT NULL,
+    -- Password reset OTP
+    reset_otp          VARCHAR(6)    DEFAULT NULL,
+    reset_otp_expires  DATETIME      DEFAULT NULL,
+    -- Ban management
+    ban_expires        DATETIME      DEFAULT NULL,
+    ban_reason         VARCHAR(255)  DEFAULT NULL,
+    -- Remember me
+    remember_selector  VARCHAR(32)   DEFAULT NULL,
+    remember_token_hash VARCHAR(255) DEFAULT NULL,
+    remember_expires   DATETIME      DEFAULT NULL,
     -- Startup-specific fields (nullable for regular users)
     nom_startup         VARCHAR(200) DEFAULT NULL,
     nom_responsable     VARCHAR(100) DEFAULT NULL,
@@ -41,8 +52,12 @@ CREATE TABLE IF NOT EXISTS users (
 -- Run this if upgrading from a previous version:
 --
 -- ALTER TABLE users
+--   ADD COLUMN google_id VARCHAR(255) DEFAULT NULL AFTER derniere_connexion,
 --   ADD COLUMN email_token VARCHAR(64) DEFAULT NULL AFTER derniere_connexion,
 --   ADD COLUMN email_token_expires DATETIME DEFAULT NULL AFTER email_token,
+--   ADD COLUMN remember_selector VARCHAR(32) DEFAULT NULL AFTER ban_reason,
+--   ADD COLUMN remember_token_hash VARCHAR(255) DEFAULT NULL AFTER remember_selector,
+--   ADD COLUMN remember_expires DATETIME DEFAULT NULL AFTER remember_token_hash,
 --   MODIFY COLUMN statut ENUM('actif','inactif','banni','verifie','pending') DEFAULT 'pending';
 --
 -- UPDATE users SET statut = 'actif' WHERE statut NOT IN ('banni','inactif');
@@ -70,3 +85,5 @@ CREATE INDEX IF NOT EXISTS idx_users_email        ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role         ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_statut       ON users(statut);
 CREATE INDEX IF NOT EXISTS idx_users_email_token  ON users(email_token);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_users_remember_selector ON users(remember_selector);

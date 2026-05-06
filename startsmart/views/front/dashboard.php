@@ -1,470 +1,1211 @@
 <?php
 session_start();
-$isLoggedIn = !empty($_SESSION['user_id']);
-if($isLoggedIn){
-  $name = $_SESSION['user_name'] ?? 'Utilisateur';
-  $type = $_SESSION['user_type'] ?? 'user';
-  
-  require_once __DIR__ . '/../../controllers/UserController.php';
-  $userController = new UserController();
-  
-  // Get user detail
-  $userController->getUser($_SESSION['user_id']);
-  $user = $_SESSION['user_detail'] ?? null;
-  
-  // Handle profile update
-  if($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['save_profile'])){
-    $role = $user['role'] ?? 'user';
-    
-    if($role === 'startup'){
-      // Startup profile update
-      $nom_startup = trim($_POST['nom_startup'] ?? '');
-      $nom_responsable = trim($_POST['nom_responsable'] ?? '');
-      $prenom_responsable = trim($_POST['prenom_responsable'] ?? '');
-      $email = trim($_POST['email'] ?? '');
-      $telephone = trim($_POST['telephone'] ?? '');
-      $secteur = trim($_POST['secteur'] ?? '');
-      $site_web = trim($_POST['site_web'] ?? '');
-      $stade = trim($_POST['stade'] ?? '');
-      
-      if($nom_startup && $nom_responsable && $prenom_responsable && $email){
-        $userController->updateStartupAction($_SESSION['user_id'], [
-          'nom_startup' => $nom_startup,
-          'nom_responsable' => $nom_responsable,
-          'prenom_responsable' => $prenom_responsable,
-          'email' => $email,
-          'telephone' => $telephone,
-          'secteur' => $secteur,
-          'site_web' => $site_web,
-          'stade' => $stade,
-          'statut' => $user['statut']
-        ]);
-        
-        if(!empty($_SESSION['success'])){
-          $_SESSION['user_name'] = $nom_startup;
-          $userController->getUser($_SESSION['user_id']);
-          $user = $_SESSION['user_detail'];
-          $name = $_SESSION['user_name'];
-          echo '<script>showToast("✅ Profil startup mis à jour avec succès!")</script>';
-        }
-      }
-    } else {
-      // Regular user profile update
-      $nom = trim($_POST['nom'] ?? '');
-      $prenom = trim($_POST['prenom'] ?? '');
-      $email = trim($_POST['email'] ?? '');
-      $telephone = trim($_POST['telephone'] ?? '');
-      $dob = trim($_POST['date_naissance'] ?? '');
-      
-      if($nom && $prenom && $email){
-        $userController->updateUserAction($_SESSION['user_id'], [
-          'nom' => $nom,
-          'prenom' => $prenom,
-          'email' => $email,
-          'telephone' => $telephone,
-          'date_naissance' => $dob,
-          'role' => $user['role'],
-          'statut' => $user['statut']
-        ]);
-        
-        if(!empty($_SESSION['success'])){
-          $_SESSION['user_name'] = "$prenom $nom";
-          $userController->getUser($_SESSION['user_id']);
-          $user = $_SESSION['user_detail'];
-          $name = $_SESSION['user_name'];
-          echo '<script>showToast("✅ Profil mis à jour avec succès!")</script>';
-        }
-      }
-    }
-  }
+require_once __DIR__ . '/../../controllers/AuthController.php';
+$authController = new AuthController();
+if (empty($_SESSION['user_id'])) {
+    $authController->autoLoginFromRememberMe();
 }
+if(empty($_SESSION['user_id']) || empty($_SESSION['user_role'])){
+    header('Location: ../../api/auth.php?action=logout');
+    exit;
+}
+
+$role = $_SESSION['user_role'] ?? 'user';
+$name = $_SESSION['user_name'] ?? 'Utilisateur';
+$photo = $_SESSION['user_photo'] ?? null;
+$initials = implode('', array_map(fn($w)=>strtoupper($w[0] ?? ''), array_filter(explode(' ',$name))));
+
+// Load user/startup data if admin or self-view
+$userData = null;
+$isUser = $role === 'user';
+$isStartup = $role === 'startup';
+
+if($isUser || $isStartup){
+    require_once __DIR__ . '/../../controllers/UserController.php';
+    $controller = new UserController();
+    
+    if($isUser){
+        $controller->getUser($_SESSION['user_id']);
+        $userData = $_SESSION['user_detail'] ?? null;
+    } else {
+        $controller->getStartup($_SESSION['user_id']);
+        $userData = $_SESSION['startup_detail'] ?? null;
+    }
+}
+unset($_SESSION['user_detail'], $_SESSION['startup_detail']);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StartSmart – Créez votre startup en ligne</title>
-<link rel="stylesheet" href="../../public/css/style.css">
+<title>StartSmart — Espace Personnel</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="../../public/js/face-recognition.js"></script>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#fff; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color:#333; }
-  #toast { position:fixed; bottom:1.8rem; right:1.8rem; z-index:9999; background:#0d1b3e; color:#fff; padding:13px 20px; border-radius:8px; font-size:.875rem; font-weight:500; display:none; }
-  #toast.show { display:block; animation:slideIn .3s ease-out; }
-  @keyframes slideIn { from { transform:translateX(400px); opacity:0; } to { transform:translateX(0); opacity:1; } }
-  
-  /* Navigation */
-  .navbar {
-    background:#2d3e50; padding:1.2rem 3rem; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.1);
-  }
-  .navbar .logo { font-size:1.5rem; font-weight:800; color:#fff; letter-spacing:-.5px; }
-  .navbar .logo span { margin:0 2px; }
-  .navbar .logo .w { color:#fff; }
-  .navbar .logo .b { color:#3b8cf7; }
-  .navbar .logo .g { color:#2ddc78; }
-  .nav-links { display:flex; gap:2rem; list-style:none; }
-  .nav-links a { color:#fff; text-decoration:none; font-size:.95rem; font-weight:500; transition:color .3s; cursor:pointer; }
-  .nav-links a:hover { color:#3b8cf7; }
-  .navbar .btn-container { display:flex; gap:1rem; align-items:center; }
-  .navbar .btn-login { background:transparent; color:#fff; border:none; cursor:pointer; font-size:.95rem; font-weight:500; }
-  .navbar .btn-login:hover { color:#3b8cf7; }
-  .navbar .btn-started { background:#2ddc78; color:#fff; border:none; padding:.6rem 1.5rem; border-radius:6px; cursor:pointer; font-weight:600; font-size:.9rem; transition:all .3s; }
-  .navbar .btn-started:hover { background:#24c16b; transform:scale(1.05); }
-  
-  /* Hero Section */
-  .hero {
-    background:linear-gradient(135deg, #1e3a5f 0%, #2d5a7b 100%); color:#fff; padding:4rem 3rem; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden; min-height:500px;
-  }
-  .hero::before {
-    content:''; position:absolute; top:0; left:0; right:0; bottom:0;
-    background:radial-gradient(ellipse 80% 60% at 15% 30%, rgba(59,140,247,.15) 0%, transparent 60%),
-               radial-gradient(ellipse 70% 65% at 85% 70%, rgba(45,220,120,.1) 0%, transparent 60%);
-    pointer-events:none;
-  }
-  .hero-content { flex:1; z-index:1; }
-  .hero h1 { font-size:3.5rem; font-weight:700; line-height:1.2; margin-bottom:1rem; }
-  .hero .subtitle { font-size:1.4rem; font-weight:700; color:#2ddc78; margin-bottom:1.5rem; }
-  .hero p { font-size:1rem; color:rgba(255,255,255,.85); line-height:1.6; margin-bottom:2rem; max-width:600px; }
-  .hero-shape { flex:1; position:relative; height:400px; display:flex; align-items:center; justify-content:center; }
-  .hex-shape { width:250px; height:250px; position:relative; }
-  .hex { position:absolute; border:2px solid rgba(59,140,247,.3); }
-  .hex1 { width:100px; height:115px; clip-path:polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%); background:rgba(59,140,247,.1); }
-  .hex2 { width:150px; height:173px; clip-path:polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%); background:rgba(45,220,120,.08); top:40px; left:50px; }
-  .hex3 { width:120px; height:138px; clip-path:polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%); background:rgba(59,140,247,.05); top:100px; left:65px; }
-  
-  /* Features Section */
-  .features { padding:4rem 3rem; background:#f5f7fa; }
-  .features-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:2rem; max-width:1200px; margin:0 auto; }
-  .feature-card {
-    background:#fff; border-radius:12px; padding:2.5rem; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,.08); transition:all .3s;
-  }
-  .feature-card:hover { transform:translateY(-8px); box-shadow:0 12px 24px rgba(0,0,0,.15); }
-  .feature-icon { width:70px; height:70px; margin:0 auto 1.5rem; background:#f0f4f8; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2rem; }
-  .feature-card:nth-child(1) .feature-icon { background:rgba(59,140,247,.1); }
-  .feature-card:nth-child(2) .feature-icon { background:rgba(45,220,120,.1); }
-  .feature-card:nth-child(3) .feature-icon { background:rgba(255,193,7,.1); }
-  .feature-card h3 { font-size:1.2rem; font-weight:700; color:#1e3a5f; margin-bottom:.8rem; }
-  .feature-card p { color:#666; font-size:.95rem; line-height:1.6; }
-  
-  /* User Dashboard Section */
-  .dashboard-section { padding:3rem; background:#fff; display:none; }
-  .dashboard-section.active { display:block; }
-  .dashboard-header { margin-bottom:2rem; }
-  .dashboard-header h2 { font-size:1.8rem; font-weight:700; color:#1e3a5f; }
-  .dashboard-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:1.5rem; }
-  .dashboard-card { background:linear-gradient(135deg, #f5f7fa 0%, #fff 100%); border-radius:12px; padding:2rem; box-shadow:0 4px 12px rgba(0,0,0,.08); cursor:pointer; transition:all .3s; }
-  .dashboard-card:hover { transform:translateY(-4px); box-shadow:0 8px 20px rgba(0,0,0,.12); }
-  .dashboard-card .icon { font-size:2.5rem; margin-bottom:1rem; }
-  .dashboard-card h3 { font-size:1.1rem; font-weight:700; color:#1e3a5f; margin-bottom:.5rem; }
-  .dashboard-card p { color:#666; font-size:.9rem; }
-  
-  .logout-btn { background:#e74c3c; color:#fff; border:none; padding:.7rem 1.5rem; border-radius:6px; cursor:pointer; font-weight:600; transition:background .3s; }
-  .logout-btn:hover { background:#c0392b; }
-  
-  @media(max-width:768px) {
-    .navbar { flex-direction:column; gap:1rem; }
-    .nav-links { gap:1rem; font-size:.85rem; }
-    .hero { flex-direction:column; padding:2rem; }
-    .hero h1 { font-size:2.2rem; }
-    .hero-shape { height:300px; }
-    .hex-shape { width:200px; height:200px; }
-  }
+:root {
+  --bg: #06080f;
+  --sidebar: #0b0e1a;
+  --blue: #3b8cf7;
+  --green: #00e5a0;
+  --red: #ff5b6b;
+  --text: #e8eaf0;
+  --muted: rgba(232,234,240,0.5);
+  --card-bg: rgba(255,255,255,0.03);
+  --border: rgba(255,255,255,0.07);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+/* ── Background ── */
+.bg-scene {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(59,140,247,0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 80%, rgba(0,229,160,0.07) 0%, transparent 55%);
+}
+
+/* ── Nav ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 48px; height: 64px;
+  background: rgba(6,8,15,0.8);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  animation: navDown 0.6s ease both;
+}
+@keyframes navDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+.nav-logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.nav-logo span { color: var(--blue); }
+.nav-logo em { color: var(--green); font-style: normal; }
+
+.nav-center {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.nav-center a {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.nav-center a:hover { color: var(--text); }
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--blue), #5b6ef7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: white;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.user-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'Syne', sans-serif;
+}
+.user-role {
+  font-size: 0.7rem;
+  color: var(--green);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.btn-logout {
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: rgba(255, 91, 107, 0.12);
+  border: 1px solid rgba(255, 91, 107, 0.25);
+  color: #ff5b6b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Syne', sans-serif;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s;
+}
+.btn-logout:hover {
+  background: rgba(255, 91, 107, 0.2);
+  border-color: rgba(255, 91, 107, 0.4);
+}
+
+/* ── Main Content ── */
+.main {
+  position: relative;
+  z-index: 1;
+  padding-top: 64px;
+  min-height: 100vh;
+}
+
+.section {
+  position: relative;
+  z-index: 1;
+  padding: 80px 48px;
+}
+
+.section-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 16px;
+}
+
+.section-sub {
+  color: var(--muted);
+  font-size: 1rem;
+  max-width: 500px;
+  line-height: 1.7;
+  margin-bottom: 60px;
+}
+
+.profile-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: center;
+  animation: fadeUp 0.8s 0.2s ease both;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profile-avatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--blue), #5b6ef7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  overflow: hidden;
+  box-shadow: 0 20px 48px rgba(59, 140, 247, 0.3);
+}
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-data {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.profile-field {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.profile-field-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.profile-field-value {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+.profile-status {
+  margin-top: 14px;
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--blue) 0%, #5b6ef7 100%);
+  border: none;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: white;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 8px 24px rgba(59, 140, 247, 0.35);
+}
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px rgba(59, 140, 247, 0.45);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.btn-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Modal ── */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  align-items: center;
+  justify-content: center;
+}
+.modal.active {
+  display: flex;
+  animation: fadeIn 0.2s;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-content {
+  background: var(--sidebar);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease both;
+}
+@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.field input, .field select {
+  width: 100%;
+  padding: 11px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus, .field select:focus {
+  border-color: var(--blue);
+  background: rgba(59, 140, 247, 0.05);
+}
+
+.field input[type="file"] {
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(59, 140, 247, 0.05);
+}
+
+.field input[type="file"]::file-selector-button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--blue);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, var(--blue), #5b6ef7);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.btn-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 140, 247, 0.3);
+}
+
+/* ── Reveal Animation ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 768px) {
+  nav { padding: 0 24px; }
+  .section { padding: 60px 24px; }
+  .profile-section { grid-template-columns: 1fr; }
+  .nav-center { display: none; }
+}
 </style>
+</head>
 <body>
 
-<div id="toast"></div>
+<div class="bg-scene"></div>
 
 <!-- Navigation -->
-<nav class="navbar">
-  <div class="logo">
-    <span class="w">Start</span><span class="b">Smart</span><span class="g">:</span>
+<nav>
+  <div class="nav-logo">Start<span>Smart</span><em>:</em></div>
+  <div class="nav-center">
+    <a href="#profile">Mon Profil</a>
+    <a href="#fonctionnalites">Accueil</a>
   </div>
-  <ul class="nav-links">
-    <li><a onclick="scrollTo('projects')">📁 Projets</a></li>
-    <li><a onclick="scrollTo('sponsors')">🏆 Ressources des sponsors</a></li>
-    <li><a onclick="scrollTo('events')">🎯 Événement</a></li>
-    <li><a onclick="scrollTo('offers')">🚀 Offres des startups</a></li>
-    <li><a onclick="scrollTo('forum')">💬 Notre forum</a></li>
-  </ul>
-  <div class="btn-container">
-    <?php if($isLoggedIn): ?>
-      <span style="color:#fff;font-size:.9rem;cursor:pointer;" onclick="openProfileModal()">👤 Bienvenue, <?= htmlspecialchars($name) ?></span>
-      <button class="logout-btn" onclick="doLogout()">Log out</button>
-    <?php endif; ?>
+  <div class="nav-right">
+    <div class="nav-user">
+      <div class="user-avatar">
+        <?php if($photo): ?>
+        <img src="<?= htmlspecialchars($photo) ?>" alt="Photo">
+        <?php else: ?>
+        <?= htmlspecialchars($initials ?: 'U') ?>
+        <?php endif; ?>
+      </div>
+      <div class="user-info">
+        <div class="user-name"><?= htmlspecialchars($name) ?></div>
+        <div class="user-role"><?= htmlspecialchars($role) ?></div>
+      </div>
+    </div>
+    <a href="../../api/auth.php?action=logout" class="btn-logout">Quitter</a>
   </div>
 </nav>
 
-<!-- Hero Section -->
-<section class="hero">
-  <div class="hero-content">
-    <h1>CRÉEZ VOTRE<br>STARTUP EN LIGNE</h1>
-    <div class="subtitle">COLLABOREZ, TROUVEZ DES<br>FINANCEMENTS, & RÉUSSISSEZ.</div>
-    <p>Notre projet StartSmart utilise les technologies numériques pour faciliter en ligne de consommatrices, et encourageage. StartSmart représente une réponse moderne au défis du futur du business.</p>
-    <button class="btn-started" onclick="<?= $isLoggedIn ? "location.href='#dashboard'" : "location.href='../auth/login.php'" ?>">GET STARTED</button>
-  </div>
-  <div class="hero-shape">
-    <div class="hex-shape">
-      <div class="hex hex1"></div>
-      <div class="hex hex2"></div>
-      <div class="hex hex3"></div>
+<!-- Main Content -->
+<main class="main">
+  <!-- Hero Section -->
+  <section class="section" style="padding-top: 80px; padding-bottom: 80px; text-align: center;">
+    <div class="reveal">
+      <div class="section-tag">Bienvenue</div>
+      <div style="font-family: 'Syne', sans-serif; font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 800; letter-spacing: -1px; margin-bottom: 20px;">
+        Explorez StartSmart
+      </div>
+      <p class="section-sub" style="margin-left: auto; margin-right: auto;">
+        <?php if($isUser): ?>
+        Vous êtes connecté en tant qu'utilisateur. Découvrez les startups, les sponsorships et participez à l'écosystème entrepreneurial.
+        <?php elseif($isStartup): ?>
+        Vous êtes connecté en tant que startup. Présentez votre projet, trouvez des sponsors et collaborez avec d'autres entrepreneurs.
+        <?php endif; ?>
+      </p>
+      <div class="hero-actions" style="display: flex; gap: 12px; justify-content: center; margin-top: 32px;">
+        <a href="#profile" class="btn-primary">Mon Profil →</a>
+        <a href="javascript:void(0)" class="btn-secondary">En savoir plus</a>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- Features Section -->
-<section class="features" id="projects">
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon">📁</div>
-      <h3>Projets</h3>
-      <p>Découvrez et participez à des projets innovants, partager votre expertise et développer votre réseau professionnel.</p>
+  <!-- Features Section -->
+  <section class="section" id="fonctionnalites">
+    <div class="reveal">
+      <div class="section-tag">Fonctionnalités</div>
+      <div class="section-title">Ce que vous pouvez faire</div>
+      <p class="section-sub">Exploitez tous les outils et ressources de StartSmart</p>
     </div>
-    <div class="feature-card">
-      <div class="feature-icon">🏆</div>
-      <h3>Ressources des sponsors</h3>
-      <p>Accédez aux ressources et opportunités proposées par nos partenaires sponsors pour accélérer votre croissance.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🎯</div>
-      <h3>Événement</h3>
-      <p>Participez à nos événements exclusifs, conférences et ateliers pour réseauter et apprendre des meilleurs.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🚀</div>
-      <h3>Offres des startups</h3>
-      <p>Explorez les offres spéciales et services proposés par la communauté StartSmart pour booster votre activité.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">💬</div>
-      <h3>Notre forum</h3>
-      <p>Connectez-vous avec d'autres entrepreneurs, posez des questions et partagez vos expériences en toute bienveillance.</p>
-    </div>
-  </div>
-</section>
 
-<!-- User Dashboard Section -->
-<?php if($isLoggedIn): ?>
-<section class="dashboard-section active" id="dashboard">
-  <div class="dashboard-header">
-    <h2 style="cursor:pointer;" onclick="openProfileModal()">👤 Bonjour, <?= htmlspecialchars($name) ?> 👋</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; animation: fadeUp 0.6s ease both;">
+      <div style="padding: 28px; border-radius: 18px; border: 1px solid var(--border); background: var(--card-bg); backdrop-filter: blur(10px); transition: transform 0.25s, border-color 0.25s; cursor: default;" onmouseover="this.style.transform='translateY(-6px)'; this.style.borderColor='rgba(59,140,247,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(255,255,255,0.07)'">
+        <div style="width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 20px; background: rgba(59,140,247,0.1); border: 1px solid rgba(59,140,247,0.2);">🎯</div>
+        <div style="font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; margin-bottom: 10px;">Projets</div>
+        <div style="font-size: 0.875rem; color: var(--muted); line-height: 1.65;">Créez et gérez vos projets entrepreneuriaux</div>
+      </div>
+
+      <div style="padding: 28px; border-radius: 18px; border: 1px solid var(--border); background: var(--card-bg); backdrop-filter: blur(10px); transition: transform 0.25s, border-color 0.25s; cursor: default;" onmouseover="this.style.transform='translateY(-6px)'; this.style.borderColor='rgba(0,229,160,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(255,255,255,0.07)'">
+        <div style="width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 20px; background: rgba(0,229,160,0.1); border: 1px solid rgba(0,229,160,0.2);">💰</div>
+        <div style="font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; margin-bottom: 10px;">Financement</div>
+        <div style="font-size: 0.875rem; color: var(--muted); line-height: 1.65;">Accédez aux opportunités de financement et sponsorships</div>
+      </div>
+
+      <div style="padding: 28px; border-radius: 18px; border: 1px solid var(--border); background: var(--card-bg); backdrop-filter: blur(10px); transition: transform 0.25s, border-color 0.25s; cursor: default;" onmouseover="this.style.transform='translateY(-6px)'; this.style.borderColor='rgba(255,170,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(255,255,255,0.07)'">
+        <div style="width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 20px; background: rgba(255,170,0,0.1); border: 1px solid rgba(255,170,0,0.2);">🤝</div>
+        <div style="font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; margin-bottom: 10px;">Collaboration</div>
+        <div style="font-size: 0.875rem; color: var(--muted); line-height: 1.65;">Connectez-vous avec d'autres entrepreneurs et mentors</div>
+      </div>
+
+      <div style="padding: 28px; border-radius: 18px; border: 1px solid var(--border); background: var(--card-bg); backdrop-filter: blur(10px); transition: transform 0.25s, border-color 0.25s; cursor: default;" onmouseover="this.style.transform='translateY(-6px)'; this.style.borderColor='rgba(180,90,255,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(255,255,255,0.07)'">
+        <div style="width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 20px; background: rgba(180,90,255,0.1); border: 1px solid rgba(180,90,255,0.2);">📊</div>
+        <div style="font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; margin-bottom: 10px;">Analytics</div>
+        <div style="font-size: 0.875rem; color: var(--muted); line-height: 1.65;">Suivez les métriques et la croissance de votre projet</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Profile Section -->
+  <section class="section" id="profile">
+    <div class="reveal">
+      <div class="section-tag">Espace Personnel</div>
+      <div class="section-title">Mon Profil</div>
+      <p class="section-sub">Gérez vos informations personnelles et votre photo de profil</p>
+    </div>
+
+    <div class="profile-section reveal">
+      <div>
+        <div class="profile-avatar" id="profile-avatar-display">
+          <?php if($photo): ?>
+          <img src="<?= htmlspecialchars($photo) ?>" alt="Photo">
+          <?php else: ?>
+          <?= htmlspecialchars($initials ?: 'U') ?>
+          <?php endif; ?>
+        </div>
+        <div class="profile-actions">
+          <button class="btn-primary" onclick="openModal('photoModal')">📷 Changer la photo</button>
+          <button class="btn-secondary" onclick="openProfileEditModal()">✏️ Modifier mes infos</button>
+        </div>
+        <div id="profile-update-status" class="profile-status"></div>
+      </div>
+
+      <div class="profile-info">
+        <?php if($isUser && $userData): ?>
+        <div class="profile-data">
+          <div class="profile-field">
+            <div class="profile-field-label">Nom</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['nom'] ?? '') ?></div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-field-label">Prénom</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['prenom'] ?? '') ?></div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-field-label">Email</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['email'] ?? '') ?></div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-field-label">Téléphone</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['telephone'] ?? 'Non renseigné') ?></div>
+          </div>
+          <div class="profile-field" style="grid-column: 1/-1;">
+            <div class="profile-field-label">Date de naissance</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['date_naissance'] ?? 'Non renseignée') ?></div>
+          </div>
+        </div>
+
+        <?php elseif($isStartup && $userData): ?>
+        <div class="profile-data">
+          <div class="profile-field">
+            <div class="profile-field-label">Nom Startup</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['nom_startup'] ?? '') ?></div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-field-label">Secteur</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['secteur'] ?? '') ?></div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-field-label">Responsable</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['nom_responsable'] ?? '') ?></div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-field-label">Email</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['email'] ?? '') ?></div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-field-label">Téléphone</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['telephone'] ?? 'Non renseigné') ?></div>
+          </div>
+          <div class="profile-field">
+            <div class="profile-field-label">Stade</div>
+            <div class="profile-field-value"><?= htmlspecialchars($userData['stade'] ?? 'Non défini') ?></div>
+          </div>
+          <div class="profile-field" style="grid-column: 1/-1;">
+            <div class="profile-field-label">Site Web</div>
+            <div class="profile-field-value">
+              <?php if(!empty($userData['site_web'])): ?>
+              <a href="<?= htmlspecialchars($userData['site_web']) ?>" target="_blank" style="color: var(--blue);">
+                <?= htmlspecialchars($userData['site_web']) ?>
+              </a>
+              <?php else: ?>
+              Non renseigné
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+
+        <?php else: ?>
+        <div class="profile-field" style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--muted);">
+          Chargement des données...
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </section>
+
+  <!-- Face Recognition Section -->
+  <section class="section" id="face-recognition">
+    <div class="reveal">
+      <div class="section-tag">Sécurité</div>
+      <div class="section-title">Reconnaissance Faciale</div>
+      <p class="section-sub">Configurez la reconnaissance faciale pour une connexion plus rapide et sécurisée</p>
+    </div>
+
+    <div style="max-width: 600px; margin: 40px auto;">
+      <div style="padding: 32px; border-radius: 18px; border: 1px solid var(--border); background: var(--card-bg);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+          <div>
+            <div style="font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 6px;">Reconnaissance Faciale</div>
+            <div style="font-size: 0.9rem; color: var(--muted);">Activez la connexion par reconnaissance faciale</div>
+          </div>
+          <div style="text-align: right;">
+            <div id="face-status-badge" style="font-size: 0.8rem; font-weight: 600; padding: 8px 16px; border-radius: 8px; background: rgba(255,91,107,0.15); color: var(--red); display: inline-block;">
+              ⚙️ À configurer
+            </div>
+          </div>
+        </div>
+
+        <div id="face-setup-area" style="margin-bottom: 20px;">
+          <div style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px;">Méthode de configuration</label>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn-secondary" id="btn-upload-face" onclick="showUploadFaceForm()" style="flex: 1;">📁 Importer une photo</button>
+              <button class="btn-secondary" id="btn-webcam-face" onclick="showWebcamFaceForm()" style="flex: 1;">📷 Utiliser la caméra</button>
+            </div>
+          </div>
+
+          <!-- Upload Form -->
+          <div id="upload-face-form" style="display: none;">
+            <div class="field" style="margin-bottom: 16px;">
+              <label>Sélectionner une photo de votre visage</label>
+              <input type="file" id="face-image-upload" accept="image/jpeg,image/png" onchange="previewFaceImage()">
+              <div id="face-preview" style="margin-top: 16px; display: none;">
+                <img id="face-preview-img" src="" alt="Aperçu" style="width: 100%; border-radius: 12px; max-height: 300px; object-fit: cover;">
+              </div>
+            </div>
+            <div id="face-upload-status" class="profile-status"></div>
+            <button class="btn-submit" id="btn-submit-face" onclick="uploadFaceImage()" style="width: 100%;">Enregistrer mon visage</button>
+            <button class="btn-secondary" onclick="hideFaceForm()" style="width: 100%; margin-top: 10px;">Annuler</button>
+          </div>
+
+          <!-- Webcam Form -->
+          <div id="webcam-face-form" style="display: none;">
+            <div style="margin-bottom: 16px;">
+              <div style="aspect-ratio: 1; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 12px; display: none;" id="face-camera-preview">
+                <video id="face-webcam-video" style="width: 100%; height: 100%; object-fit: cover;" playsinline></video>
+              </div>
+              <div id="face-webcam-controls" style="display: none; margin-bottom: 12px;">
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn-secondary" id="btn-capture-webcam-face" onclick="captureWebcamFace()" style="flex: 1;">📸 Capturer</button>
+                  <button class="btn-secondary" onclick="stopWebcamFace()" style="flex: 1;">⏹ Arrêter</button>
+                </div>
+              </div>
+              <button class="btn-primary" id="btn-start-webcam-face" onclick="startWebcamFace()" style="width: 100%; display: none;">🎥 Démarrer la caméra</button>
+            </div>
+            <div id="face-webcam-status" class="profile-status"></div>
+            <button class="btn-secondary" onclick="hideFaceForm()" style="width: 100%;">Annuler</button>
+          </div>
+        </div>
+
+        <!-- Face Recognition Settings (shown when configured) -->
+        <div id="face-settings-area" style="display: none;">
+          <div style="padding: 16px; border-radius: 10px; background: rgba(0,229,160,0.1); border: 1px solid rgba(0,229,160,0.3); margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--green);">
+              ✅ Reconnaissance faciale configurée le <span id="face-setup-date"></span>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px;">Activer la connexion par visage</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="flex: 1;">
+                <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px;">Connexion par reconnaissance faciale</div>
+                <div style="font-size: 0.85rem; color: var(--muted);">Connectez-vous rapidement en utilisant votre visage</div>
+              </div>
+              <label style="display: flex; align-items: center; cursor: pointer;">
+                <input type="checkbox" id="face-enabled-toggle" onchange="toggleFaceRecognition()" style="width: 18px; height: 18px; accent-color: var(--green);">
+              </label>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <button class="btn-secondary" id="btn-reregister-face" onclick="showUploadFaceForm()" style="flex: 1;">🔄 Réenregistrer mon visage</button>
+            <button class="btn-secondary" id="btn-remove-face" onclick="removeFaceRecognition()" style="flex: 1; border-color: rgba(255,91,107,0.3); color: var(--red);">🗑️ Supprimer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<!-- Modal: Changer Photo -->
+<div id="photoModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Changer la photo de profil</div>
+      <button class="modal-close" onclick="closeModal('photoModal')">✕</button>
+    </div>
+    <div class="field">
+      <label>Sélectionner une image</label>
+      <input type="file" id="photo-input" accept="image/*">
+    </div>
+    <div id="upload-status"></div>
+    <button class="btn-submit" onclick="uploadPhoto()">Télécharger</button>
   </div>
-  <div class="dashboard-grid">
-    <div class="dashboard-card"><div class="icon">💡</div><h3>Mes idées</h3><p>Créez et gérez vos idées de projets</p></div>
-    <div class="dashboard-card"><div class="icon">🤝</div><h3>Collaboration</h3><p>Trouvez des co-fondateurs et partenaires</p></div>
-    <div class="dashboard-card"><div class="icon">💰</div><h3>Financement</h3><p>Découvrez les opportunités de financement</p></div>
-    <div class="dashboard-card"><div class="icon">📊</div><h3>Métriques</h3><p>Suivez la progression de vos projets</p></div>
-    <div class="dashboard-card" onclick="openProfileModal()" style="cursor:pointer;"><div class="icon">👤</div><h3>Mon profil</h3><p>Gérez vos informations personnelles</p></div>
-    <div class="dashboard-card"><div class="icon">🔔</div><h3>Notifications</h3><p>Restez informé des mises à jour</p></div>
+</div>
+
+<!-- Modal: Modifier Profil -->
+<div id="profileEditModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Modifier mes informations</div>
+      <button class="modal-close" onclick="closeModal('profileEditModal')">✕</button>
+    </div>
+    <form id="profile-edit-form" onsubmit="submitProfileUpdate(event)">
+      <div id="profile-fields-user">
+        <div class="field">
+          <label>Nom</label>
+          <input type="text" id="edit-nom" required>
+        </div>
+        <div class="field">
+          <label>Prénom</label>
+          <input type="text" id="edit-prenom" required>
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="edit-email" required>
+        </div>
+        <div class="field">
+          <label>Téléphone</label>
+          <input type="text" id="edit-telephone">
+        </div>
+        <div class="field">
+          <label>Date de naissance</label>
+          <input type="date" id="edit-date-naissance">
+        </div>
+      </div>
+      <div id="profile-fields-startup">
+        <div class="field">
+          <label>Nom Startup</label>
+          <input type="text" id="edit-nom-startup">
+        </div>
+        <div class="field">
+          <label>Nom Responsable</label>
+          <input type="text" id="edit-nom-responsable">
+        </div>
+        <div class="field">
+          <label>Prénom Responsable</label>
+          <input type="text" id="edit-prenom-responsable">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="edit-email-startup">
+        </div>
+        <div class="field">
+          <label>Téléphone</label>
+          <input type="text" id="edit-telephone-startup">
+        </div>
+        <div class="field">
+          <label>Secteur</label>
+          <select id="edit-secteur">
+            <option value="">Sélectionner…</option>
+            <option value="tech">Tech</option>
+            <option value="sante">Santé</option>
+            <option value="fintech">Fintech</option>
+            <option value="logistique">Logistique</option>
+            <option value="retail">Retail</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Stade</label>
+          <select id="edit-stade">
+            <option value="">Sélectionner…</option>
+            <option value="idee">Idée</option>
+            <option value="prototype">Prototype</option>
+            <option value="mvp">MVP</option>
+            <option value="croissance">Croissance</option>
+            <option value="scale">Scale</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Site web</label>
+          <input type="url" id="edit-site-web" placeholder="https://...">
+        </div>
+      </div>
+      <div class="field">
+        <label>Nouveau mot de passe (optionnel)</label>
+        <input type="password" id="edit-password" placeholder="Minimum 8 caractères">
+      </div>
+      <div class="field">
+        <label>Confirmer le mot de passe</label>
+        <input type="password" id="edit-password-confirm" placeholder="Répéter le mot de passe">
+      </div>
+      <div id="profile-modal-status" class="profile-status"></div>
+      <button class="btn-submit" type="submit">Enregistrer les modifications</button>
+    </form>
   </div>
-</section>
-<?php endif; ?>
+</div>
 
 <script>
-function doLogout() {
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '../../api/auth.php?action=logout';
-  form.style.display = 'none';
-  document.body.appendChild(form);
-  form.submit();
+const currentRole = <?= json_encode($role) ?>;
+const profileData = <?= json_encode($userData ?? []) ?>;
+
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
 }
 
-function scrollTo(section) {
-  const el = document.getElementById(section);
-  if(el) el.scrollIntoView({ behavior:'smooth' });
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
 }
 
-let toastTimeout;
-function showToast(msg) {
-  clearTimeout(toastTimeout);
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  toastTimeout = setTimeout(() => el.classList.remove('show'), 3000);
-}
+document.querySelectorAll('.modal').forEach(modal => {
+  modal.addEventListener('click', (e) => {
+    if(e.target === modal) {
+      modal.classList.remove('active');
+    }
+  });
+});
 
-function openProfileModal() {
-  document.getElementById('profile-modal').style.display = 'flex';
-}
-
-function closeProfileModal() {
-  document.getElementById('profile-modal').style.display = 'none';
-}
-
-function uploadFrontProfilePhoto() {
-  const file = document.getElementById('frontProfilePhoto').files[0];
-  const msgEl = document.getElementById('frontPhotoMessage');
-  
+function uploadPhoto() {
+  const file = document.getElementById('photo-input').files[0];
   if (!file) {
-    msgEl.style.display = 'none';
+    document.getElementById('upload-status').innerHTML = '<div style="color: var(--red); font-size: 0.9rem; margin-bottom: 12px;">Sélectionnez une image</div>';
     return;
   }
-  
-  if (file.size > 5 * 1024 * 1024) {
-    msgEl.innerHTML = '<span style="color:#d32f2f;">⚠️ Fichier trop volumineux (max 5MB)</span>';
-    msgEl.style.display = 'block';
-    return;
+
+  const fd = new FormData();
+  fd.append('profile_picture', file);
+
+  document.getElementById('upload-status').innerHTML = '<div style="color: var(--muted); font-size: 0.9rem; margin-bottom: 12px;">Téléchargement...</div>';
+
+  fetch('../../api/upload.php?action=upload_profile_picture', {
+    method: 'POST',
+    body: fd
+  })
+  .then(r => r.json())
+  .then(data => {
+    if(data.success) {
+      document.getElementById('upload-status').innerHTML = '<div style="color: var(--green); font-size: 0.9rem; margin-bottom: 12px;">✅ ' + data.message + '</div>';
+      
+      // Update avatar display
+      const avatar = document.getElementById('profile-avatar-display');
+      avatar.innerHTML = '<img src="' + data.photo_url + '?t=' + Date.now() + '" alt="Photo">';
+      
+      setTimeout(() => {
+        closeModal('photoModal');
+        location.reload();
+      }, 1500);
+    } else {
+      document.getElementById('upload-status').innerHTML = '<div style="color: var(--red); font-size: 0.9rem; margin-bottom: 12px;">❌ ' + (data.error || 'Erreur') + '</div>';
+    }
+  })
+  .catch(e => {
+    document.getElementById('upload-status').innerHTML = '<div style="color: var(--red); font-size: 0.9rem; margin-bottom: 12px;">❌ Erreur: ' + e.message + '</div>';
+  });
+}
+
+function setStatus(el, message, colorVar) {
+  el.textContent = message;
+  el.style.color = colorVar;
+}
+
+function openProfileEditModal() {
+  const userFields = document.getElementById('profile-fields-user');
+  const startupFields = document.getElementById('profile-fields-startup');
+  const modalStatus = document.getElementById('profile-modal-status');
+  modalStatus.textContent = '';
+
+  if (currentRole === 'startup') {
+    userFields.style.display = 'none';
+    startupFields.style.display = 'block';
+    document.getElementById('edit-nom-startup').value = profileData.nom_startup || '';
+    document.getElementById('edit-nom-responsable').value = profileData.nom_responsable || '';
+    document.getElementById('edit-prenom-responsable').value = profileData.prenom_responsable || '';
+    document.getElementById('edit-email-startup').value = profileData.email || '';
+    document.getElementById('edit-telephone-startup').value = profileData.telephone || '';
+    document.getElementById('edit-secteur').value = profileData.secteur || '';
+    document.getElementById('edit-stade').value = profileData.stade || '';
+    document.getElementById('edit-site-web').value = profileData.site_web || '';
+  } else {
+    startupFields.style.display = 'none';
+    userFields.style.display = 'block';
+    document.getElementById('edit-nom').value = profileData.nom || '';
+    document.getElementById('edit-prenom').value = profileData.prenom || '';
+    document.getElementById('edit-email').value = profileData.email || '';
+    document.getElementById('edit-telephone').value = profileData.telephone || '';
+    const dateValue = (profileData.date_naissance && profileData.date_naissance !== '0000-00-00') ? profileData.date_naissance : '';
+    document.getElementById('edit-date-naissance').value = dateValue;
   }
-  
-  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  if (!validTypes.includes(file.type)) {
-    msgEl.innerHTML = '<span style="color:#d32f2f;">⚠️ Type non autorisé (PNG, JPG, GIF, WebP)</span>';
-    msgEl.style.display = 'block';
-    return;
+
+  document.getElementById('edit-password').value = '';
+  document.getElementById('edit-password-confirm').value = '';
+  openModal('profileEditModal');
+}
+
+function submitProfileUpdate(event) {
+  event.preventDefault();
+  const modalStatus = document.getElementById('profile-modal-status');
+  const inlineStatus = document.getElementById('profile-update-status');
+  setStatus(modalStatus, 'Mise à jour en cours...', 'var(--muted)');
+
+  const fd = new FormData();
+  if (currentRole === 'startup') {
+    fd.append('nom_startup', document.getElementById('edit-nom-startup').value.trim());
+    fd.append('nom_responsable', document.getElementById('edit-nom-responsable').value.trim());
+    fd.append('prenom_responsable', document.getElementById('edit-prenom-responsable').value.trim());
+    fd.append('email', document.getElementById('edit-email-startup').value.trim());
+    fd.append('telephone', document.getElementById('edit-telephone-startup').value.trim());
+    fd.append('secteur', document.getElementById('edit-secteur').value);
+    fd.append('stade', document.getElementById('edit-stade').value);
+    fd.append('site_web', document.getElementById('edit-site-web').value.trim());
+  } else {
+    fd.append('nom', document.getElementById('edit-nom').value.trim());
+    fd.append('prenom', document.getElementById('edit-prenom').value.trim());
+    fd.append('email', document.getElementById('edit-email').value.trim());
+    fd.append('telephone', document.getElementById('edit-telephone').value.trim());
+    fd.append('date_naissance', document.getElementById('edit-date-naissance').value);
   }
-  
-  msgEl.innerHTML = '<span style="color:#1976d2;">⏳ Téléchargement en cours...</span>';
-  msgEl.style.display = 'block';
-  
-  const formData = new FormData();
-  formData.append('profile_picture', file);
-  
-  fetch('../../api/upload.php?action=upload_profile_picture', {method: 'POST', body: formData})
+
+  const password = document.getElementById('edit-password').value;
+  const passwordConfirm = document.getElementById('edit-password-confirm').value;
+  if (password || passwordConfirm) {
+    fd.append('password', password);
+    fd.append('password_confirm', passwordConfirm);
+  }
+
+  fetch('../../api/profile.php?action=update_profile', {
+    method: 'POST',
+    body: fd
+  })
     .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        msgEl.innerHTML = '<span style="color:#388e3c;">✅ ' + d.message + '</span>';
-        document.getElementById('modalProfileImg').src = d.photo_url;
-        document.getElementById('frontProfilePhoto').value = '';
-        setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
-      } else {
-        msgEl.innerHTML = '<span style="color:#d32f2f;">❌ ' + (d.error || 'Erreur') + '</span>';
+    .then(data => {
+      if (!data.success) {
+        setStatus(modalStatus, '❌ ' + (data.error || 'Erreur lors de la mise à jour.'), 'var(--red)');
+        return;
       }
+      setStatus(modalStatus, '✅ Profil mis à jour.', 'var(--green)');
+      setStatus(inlineStatus, 'Profil mis à jour avec succès.', 'var(--green)');
+      setTimeout(() => location.reload(), 700);
     })
     .catch(e => {
-      msgEl.innerHTML = '<span style="color:#d32f2f;">❌ Erreur réseau</span>';
+      setStatus(modalStatus, '❌ Erreur: ' + e.message, 'var(--red)');
     });
 }
 
-window.onclick = function(event) {
-  const modal = document.getElementById('profile-modal');
-  if(event.target === modal) {
-    closeProfileModal();
+// Scroll reveal animation
+const reveals = document.querySelectorAll('.reveal');
+const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -100px 0px' };
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, observerOptions);
+reveals.forEach(r => observer.observe(r));
+
+// ── Face Recognition Functions ────────────────────────────────
+async function initFaceRecognitionUI() {
+  try {
+    const status = await faceRecognition.getFaceStatus();
+    if (status.enabled) {
+      showFaceRecognitionSettings(status);
+    } else if (status.setup_complete) {
+      showFaceRecognitionSettings(status);
+    }
+  } catch (error) {
+    console.error('Error loading face recognition status:', error);
   }
 }
-</script>
 
-<!-- Profile Modal -->
-<div id="profile-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,.5); align-items:center; justify-content:center; font-family:inherit;">
-  <div style="background:#fff; border-radius:12px; width:90%; max-width:600px; max-height:80vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.15); padding:0;">
-    <!-- Modal Header -->
-    <div style="background:linear-gradient(135deg, #1e3a5f 0%, #2d5a7b 100%); color:#fff; padding:1.5rem; display:flex; justify-content:space-between; align-items:center; border-radius:12px 12px 0 0;">
-      <h2 style="margin:0; font-size:1.5rem;">Mon Profil</h2>
-      <button onclick="closeProfileModal()" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">✕</button>
-    </div>
+function showFaceRecognitionSettings(status) {
+  const setupArea = document.getElementById('face-setup-area');
+  const settingsArea = document.getElementById('face-settings-area');
+  const statusBadge = document.getElementById('face-status-badge');
+  const enabledToggle = document.getElementById('face-enabled-toggle');
+
+  setupArea.style.display = 'none';
+  settingsArea.style.display = 'block';
+
+  if (status.enabled) {
+    statusBadge.innerHTML = '✅ Activée';
+    statusBadge.style.background = 'rgba(0,229,160,0.15)';
+    statusBadge.style.color = 'var(--green)';
+    enabledToggle.checked = true;
+  } else {
+    statusBadge.innerHTML = '⏸️ Configurée mais désactivée';
+    statusBadge.style.background = 'rgba(255,170,0,0.15)';
+    statusBadge.style.color = 'rgba(255,170,0,0.9)';
+    enabledToggle.checked = false;
+  }
+
+  if (status.setup_date) {
+    const date = new Date(status.setup_date);
+    document.getElementById('face-setup-date').textContent = date.toLocaleDateString('fr-FR');
+  }
+}
+
+function showUploadFaceForm() {
+  document.getElementById('upload-face-form').style.display = 'block';
+  document.getElementById('webcam-face-form').style.display = 'none';
+  document.getElementById('face-camera-preview').style.display = 'none';
+  document.getElementById('btn-upload-face').style.borderColor = 'var(--blue)';
+  document.getElementById('btn-upload-face').style.background = 'rgba(59,140,247,0.1)';
+  document.getElementById('btn-webcam-face').style.borderColor = 'var(--border)';
+  document.getElementById('btn-webcam-face').style.background = 'rgba(255,255,255,0.03)';
+}
+
+function showWebcamFaceForm() {
+  document.getElementById('upload-face-form').style.display = 'none';
+  document.getElementById('webcam-face-form').style.display = 'block';
+  document.getElementById('btn-start-webcam-face').style.display = 'block';
+  document.getElementById('btn-upload-face').style.borderColor = 'var(--border)';
+  document.getElementById('btn-upload-face').style.background = 'rgba(255,255,255,0.03)';
+  document.getElementById('btn-webcam-face').style.borderColor = 'var(--blue)';
+  document.getElementById('btn-webcam-face').style.background = 'rgba(59,140,247,0.1)';
+}
+
+function hideFaceForm() {
+  document.getElementById('upload-face-form').style.display = 'none';
+  document.getElementById('webcam-face-form').style.display = 'none';
+  document.getElementById('face-camera-preview').style.display = 'none';
+  stopWebcamFace();
+}
+
+function previewFaceImage() {
+  const file = document.getElementById('face-image-upload').files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('face-preview-img').src = e.target.result;
+      document.getElementById('face-preview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+async function uploadFaceImage() {
+  const file = document.getElementById('face-image-upload').files[0];
+  if (!file) {
+    showFaceStatus('face-upload-status', 'Sélectionnez une image', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit-face');
+  btn.disabled = true;
+  btn.textContent = '⏳ Upload en cours...';
+
+  try {
+    showFaceStatus('face-upload-status', '⏳ Upload en cours...', 'loading');
+    const result = await faceRecognition.uploadFaceImage(file);
+    showFaceStatus('face-upload-status', '✅ Visage enregistré avec succès!', 'success');
+    setTimeout(() => { initFaceRecognitionUI(); hideFaceForm(); }, 1500);
+  } catch (error) {
+    console.error('uploadFaceImage error:', error);
+    showFaceStatus('face-upload-status', '❌ ' + (error.message || 'Erreur inconnue'), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Enregistrer mon visage';
+  }
+}
+
+async function startWebcamFace() {
+  try {
+    showFaceStatus('face-webcam-status', 'Activation de la caméra...', 'loading');
+    await faceRecognition.initCamera('face-webcam-video');
     
-    <!-- Modal Body -->
-    <div style="padding:2rem;">
-      <div style="text-align:center; margin-bottom:2rem;">
-        <?php if($user && ($user['profile_picture'] ?? null)): ?>
-        <img id="modalProfileImg" src="<?= htmlspecialchars($user['profile_picture']) ?>" alt="Photo" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid #3b8cf7;">
-        <?php else: ?>
-        <div id="modalProfileImg" style="width:100px; height:100px; border-radius:50%; background:#ddd; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:2rem; color:#999;">👤</div>
-        <?php endif; ?>
-        <div style="margin-top:1rem;">
-          <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Photo de profil</label>
-          <input type="file" id="frontProfilePhoto" accept="image/*" onchange="uploadFrontProfilePhoto()" style="width:100%; padding:.5rem; border:1px solid #ddd; border-radius:6px;">
-          <div id="frontPhotoMessage" style="margin-top:0.5rem; font-size:.85rem; display:none;"></div>
-        </div>
-      </div>
-      
-      <form method="POST" style="display:grid; gap:1.5rem;">
-        <?php if(($user['role'] ?? 'user') === 'startup'): ?>
-          <!-- Startup Profile Form -->
-          <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Nom de la Startup *</label>
-            <input type="text" name="nom_startup" value="<?= htmlspecialchars($user['nom_startup'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-          </div>
-          
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-            <div>
-              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Nom du Responsable *</label>
-              <input type="text" name="nom_responsable" value="<?= htmlspecialchars($user['nom_responsable'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Prénom du Responsable *</label>
-              <input type="text" name="prenom_responsable" value="<?= htmlspecialchars($user['prenom_responsable'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-            </div>
-          </div>
+    document.getElementById('btn-start-webcam-face').style.display = 'none';
+    document.getElementById('face-camera-preview').style.display = 'block';
+    document.getElementById('face-webcam-controls').style.display = 'block';
+    showFaceStatus('face-webcam-status', '✅ Caméra activée. Dirigez votre visage vers la caméra.', 'success');
+  } catch (error) {
+    showFaceStatus('face-webcam-status', '❌ ' + error.message, 'error');
+  }
+}
 
-          <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Email *</label>
-            <input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-          </div>
+function stopWebcamFace() {
+  faceRecognition.stopCamera();
+  document.getElementById('btn-start-webcam-face').style.display = 'block';
+  document.getElementById('face-camera-preview').style.display = 'none';
+  document.getElementById('face-webcam-controls').style.display = 'none';
+  document.getElementById('face-webcam-status').textContent = '';
+}
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-            <div>
-              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Téléphone</label>
-              <input type="text" name="telephone" value="<?= htmlspecialchars($user['telephone'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Secteur</label>
-              <input type="text" name="secteur" value="<?= htmlspecialchars($user['secteur'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-            </div>
-          </div>
+async function captureWebcamFace() {
+  const btn = document.getElementById('btn-capture-webcam-face');
+  btn.disabled = true;
+  btn.textContent = '⏳ Capture en cours...';
 
-          <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Site Web</label>
-            <input type="url" name="site_web" value="<?= htmlspecialchars($user['site_web'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-          </div>
+  try {
+    showFaceStatus('face-webcam-status', '⏳ Capture et traitement en cours...', 'loading');
+    const result = await faceRecognition.captureAndSetupFace();
+    showFaceStatus('face-webcam-status', '✅ Visage capturé et enregistré!', 'success');
+    stopWebcamFace();
+    setTimeout(() => { initFaceRecognitionUI(); hideFaceForm(); }, 1500);
+  } catch (error) {
+    console.error('captureWebcamFace error:', error);
+    showFaceStatus('face-webcam-status', '❌ ' + (error.message || 'Erreur inconnue'), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📸 Capturer';
+  }
+}
 
-          <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Stade de développement</label>
-            <select name="stade" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-              <option value="idee" <?= ($user['stade'] ?? '') === 'idee' ? 'selected' : '' ?>>Idée</option>
-              <option value="prototype" <?= ($user['stade'] ?? '') === 'prototype' ? 'selected' : '' ?>>Prototype</option>
-              <option value="mvp" <?= ($user['stade'] ?? '') === 'mvp' ? 'selected' : '' ?>>MVP</option>
-              <option value="croissance" <?= ($user['stade'] ?? '') === 'croissance' ? 'selected' : '' ?>>Croissance</option>
-              <option value="scale" <?= ($user['stade'] ?? '') === 'scale' ? 'selected' : '' ?>>Scale</option>
-            </select>
-          </div>
+async function toggleFaceRecognition() {
+  const toggle = document.getElementById('face-enabled-toggle');
+  try {
+    if (toggle.checked) {
+      await faceRecognition.enableFaceRecognition();
+      showFaceStatus('face-webcam-status', '✅ Reconnaissance faciale activée', 'success');
+      const badge = document.getElementById('face-status-badge');
+      badge.innerHTML = '✅ Activée';
+      badge.style.background = 'rgba(0,229,160,0.15)';
+      badge.style.color = 'var(--green)';
+    } else {
+      await faceRecognition.disableFaceRecognition();
+      showFaceStatus('face-webcam-status', '✅ Reconnaissance faciale désactivée', 'success');
+      const badge = document.getElementById('face-status-badge');
+      badge.innerHTML = '⏸️ Configurée mais désactivée';
+      badge.style.background = 'rgba(255,170,0,0.15)';
+      badge.style.color = 'rgba(255,170,0,0.9)';
+    }
+  } catch (error) {
+    toggle.checked = !toggle.checked;
+    showFaceStatus('face-webcam-status', '❌ ' + error.message, 'error');
+  }
+}
 
-          <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Rôle</label>
-            <input type="text" value="Startup" disabled style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem; background:#f0f0f0; cursor:not-allowed; color:#999;">
-          </div>
-        <?php else: ?>
-          <!-- Regular User Profile Form -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-            <div>
-              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Prénom *</label>
-              <input type="text" name="prenom" value="<?= htmlspecialchars($user['prenom'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Nom *</label>
-              <input type="text" name="nom" value="<?= htmlspecialchars($user['nom'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-            </div>
-          </div>
+async function removeFaceRecognition() {
+  if (confirm('Êtes-vous sûr? Vous devrez réenregistrer votre visage pour utiliser la reconnaissance faciale.')) {
+    try {
+      const response = await fetch('/startsmart/api/face/setup.php?action=remove', { method: 'POST' });
+      const text = await response.text();
+      const j = text.indexOf('{');
+      const data = j !== -1 ? JSON.parse(text.slice(j)) : null;
+      if (!data || !data.success) throw new Error(data?.error || 'Erreur serveur');
+      document.getElementById('face-setup-area').style.display = 'block';
+      document.getElementById('face-settings-area').style.display = 'none';
+      document.getElementById('face-status-badge').innerHTML = '⚙️ À configurer';
+      document.getElementById('face-status-badge').style.background = 'rgba(255,91,107,0.15)';
+      document.getElementById('face-status-badge').style.color = 'var(--red)';
+    } catch (error) {
+      alert('❌ Erreur: ' + error.message);
+    }
+  }
+}
 
-          <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Email *</label>
-            <input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-          </div>
+function showFaceStatus(elementId, message, type) {
+  const el = document.getElementById(elementId);
+  el.textContent = message;
+  el.className = 'profile-status ' + type;
+}
 
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-            <div>
-              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Téléphone</label>
-              <input type="text" name="telephone" value="<?= htmlspecialchars($user['telephone'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Date de naissance</label>
-              <input type="date" name="date_naissance" value="<?= htmlspecialchars($user['date_naissance'] ?? '') ?>" style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem;">
-            </div>
-          </div>
-
-          <div>
-            <label style="display:block; margin-bottom:.5rem; font-weight:600; color:#1e3a5f; font-size:.9rem;">Rôle</label>
-            <input type="text" value="<?= htmlspecialchars($user['role'] ?? '') ?>" disabled style="width:100%; padding:.75rem; border:1px solid #ddd; border-radius:6px; font-size:.9rem; background:#f0f0f0; cursor:not-allowed; color:#999;">
-          </div>
-        <?php endif; ?>
-
-        <div style="display:flex; gap:1rem; margin-top:1.5rem;">
-          <button type="submit" name="save_profile" value="1" style="flex:1; padding:.75rem; background:#3b8cf7; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:.9rem;">💾 Enregistrer</button>
-          <button type="button" onclick="closeProfileModal()" style="flex:1; padding:.75rem; background:#e0e0e0; color:#333; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:.9rem;">Fermer</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
+// Initialize face recognition UI on page load
+document.addEventListener('DOMContentLoaded', initFaceRecognitionUI);
+</script>
 </body>
 </html>

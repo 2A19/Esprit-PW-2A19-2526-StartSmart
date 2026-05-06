@@ -3,10 +3,6 @@ require_once __DIR__ . '/../config/Database.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Validator.php';
 
-/**
- * UserController – Now handles both regular users and startup accounts
- * Tables have been merged: role='startup' indicates a startup account in users table
- */
 class UserController
 {
     private PDO $db;
@@ -87,7 +83,7 @@ class UserController
     private function readAllUsers(int $limit = 10, int $offset = 0, string $role = '', string $statut = '', string $search = '', string $sort = 'id DESC'): array
     {
         [$where, $params] = $this->buildWhere($role, $statut, $search);
-        $sql = "SELECT id, nom, prenom, email, telephone, role, statut, date_inscription, nom_startup, profile_picture
+        $sql = "SELECT id, nom, prenom, email, telephone, role, statut, date_inscription, nom_startup, profile_picture, ban_expires, ban_reason
                 FROM users {$where} ORDER BY {$sort} LIMIT :limit OFFSET :offset";
         $stmt = $this->db->prepare($sql);
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
@@ -210,13 +206,13 @@ class UserController
     // ── CONTROLLER: LIST USERS (excluding startups) ────────────
     public function listUsers(): void
     {
-        $limit  = (int)($_GET['limit']  ?? 8);
-        $page   = max(1, (int)($_GET['page']   ?? 1));
+        $limit  = (int)($_GET['u_limit']  ?? 8);
+        $page   = max(1, (int)($_GET['u_page']   ?? 1));
         $offset = ($page - 1) * $limit;
-        $role   = $_GET['role']   ?? '';
-        $statut = $_GET['statut'] ?? '';
-        $search = $_GET['search'] ?? '';
-        $sort   = $_GET['sort']   ?? 'id DESC';
+        $role   = $_GET['u_role']   ?? '';
+        $statut = $_GET['u_statut'] ?? '';
+        $search = $_GET['u_search'] ?? '';
+        $sort   = $_GET['u_sort']   ?? 'id DESC';
         
         // Validate sort parameter to prevent SQL injection
         $allowed_sorts = ['id ASC', 'id DESC', 'nom ASC', 'nom DESC', 'prenom ASC', 'prenom DESC', 'email ASC', 'email DESC', 'role ASC', 'role DESC', 'statut ASC', 'statut DESC'];
@@ -235,6 +231,7 @@ class UserController
             'pages'   => (int)ceil($total / $limit),
             'page'    => $page,
             'sort'    => $sort,
+            'search'  => $search,
             'stats'   => $stats,
         ];
     }
@@ -242,12 +239,12 @@ class UserController
     // ── CONTROLLER: LIST STARTUPS (role='startup') ─────────────
     public function listStartups(): void
     {
-        $limit  = (int)($_GET['limit']  ?? 8);
-        $page   = max(1, (int)($_GET['page']   ?? 1));
+        $limit  = (int)($_GET['s_limit']  ?? 8);
+        $page   = max(1, (int)($_GET['s_page']   ?? 1));
         $offset = ($page - 1) * $limit;
-        $statut = $_GET['statut'] ?? '';
-        $search = $_GET['search'] ?? '';
-        $sort   = $_GET['sort']   ?? 'id DESC';
+        $statut = $_GET['s_statut'] ?? '';
+        $search = $_GET['s_search'] ?? '';
+        $sort   = $_GET['s_sort']   ?? 'id DESC';
         
         // Validate sort parameter to prevent SQL injection
         $allowed_sorts = ['id ASC', 'id DESC', 'nom_startup ASC', 'nom_startup DESC', 'nom_responsable ASC', 'nom_responsable DESC', 'email ASC', 'email DESC', 'secteur ASC', 'secteur DESC', 'statut ASC', 'statut DESC'];
@@ -264,6 +261,7 @@ class UserController
             'pages'   => (int)ceil($total / $limit),
             'page'    => $page,
             'sort'    => $sort,
+            'search'  => $search,
             'stats'   => $stats,
         ];
     }
@@ -514,5 +512,31 @@ class UserController
         } else {
             $_SESSION['form_errors'] = ['general' => 'Erreur lors de la mise à jour.'];
         }
+    }
+
+    // ── CONTROLLER: BAN USER ────────────────────────────────────
+    public function banUserAction(int $id, string $type, int $durationHours, string $reason): void
+    {
+        if ($id <= 0 || !$this->readOneUser($id)) {
+            $_SESSION['form_errors'] = ['general' => 'Utilisateur introuvable.']; return;
+        }
+        if ($type === 'timed' && $durationHours > 0) {
+            $expires = date('Y-m-d H:i:s', strtotime("+{$durationHours} hours"));
+            $this->db->prepare("UPDATE users SET statut = 'banni', ban_expires = :exp, ban_reason = :reason WHERE id = :id")
+                     ->execute([':exp' => $expires, ':reason' => $reason ?: null, ':id' => $id]);
+        } else {
+            $this->db->prepare("UPDATE users SET statut = 'banni', ban_expires = NULL, ban_reason = :reason WHERE id = :id")
+                     ->execute([':reason' => $reason ?: null, ':id' => $id]);
+        }
+        $_SESSION['success'] = 'Utilisateur banni.';
+    }
+
+    // ── CONTROLLER: UNBAN USER ──────────────────────────────────
+    public function unbanUserAction(int $id): void
+    {
+        if ($id <= 0) { $_SESSION['form_errors'] = ['general' => 'ID invalide.']; return; }
+        $this->db->prepare("UPDATE users SET statut = 'actif', ban_expires = NULL, ban_reason = NULL WHERE id = :id")
+                 ->execute([':id' => $id]);
+        $_SESSION['success'] = 'Utilisateur debanni.';
     }
 }

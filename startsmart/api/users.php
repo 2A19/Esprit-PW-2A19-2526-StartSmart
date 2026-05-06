@@ -68,8 +68,27 @@ if ($action === 'delete_startup' && $method === 'POST') {
     exit;
 }
 
+// ── BAN USER/STARTUP ──────────────────────────────────────────
+if ($action === 'ban_user' && $method === 'POST') {
+    $id        = (int)($_POST['id'] ?? 0);
+    $type      = $_POST['ban_type']   ?? 'permanent'; // 'permanent' or 'timed'
+    $duration  = (int)($_POST['ban_duration'] ?? 0);  // hours
+    $reason    = trim($_POST['ban_reason'] ?? '');
+    $controller->banUserAction($id, $type, $duration, $reason);
+    $tab = ($_POST['entity'] ?? 'user') === 'startup' ? 'startups' : 'users';
+    header('Location: /startsmart/views/back/dashboard.php?tab=' . $tab);
+    exit;
+}
+
+// ── UNBAN USER/STARTUP ────────────────────────────────────────
+if ($action === 'unban_user' && $method === 'POST') {
+    $id = (int)($_POST['id'] ?? 0);
+    $controller->unbanUserAction($id);
+    $tab = ($_POST['entity'] ?? 'user') === 'startup' ? 'startups' : 'users';
+    header('Location: /startsmart/views/back/dashboard.php?tab=' . $tab);
+    exit;
+}
+
 // Default: redirect to dashboard
 header('Location: /startsmart/views/back/dashboard.php');
 exit;
-
-
