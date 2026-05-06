@@ -1,0 +1,281 @@
+[04-May-2026 14:10:24 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[04-May-2026 14:10:24 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 11:32:19 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 11:32:19 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 11:32:19 Europe/Berlin] searchJobOffers SQL Error: SQLSTATE[HY093]: Invalid parameter number
+[06-May-2026 11:42:39 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: Too few arguments to function ApplicationController::updateStatus(), 0 passed in C:\xampp\htdocs\StartSmartrh\index.php on line 72 and exactly 2 expected in C:\xampp\htdocs\StartSmartrh\controllers\ApplicationController.php:160
+Stack trace:
+#0 C:\xampp\htdocs\StartSmartrh\index.php(72): ApplicationController->updateStatus()
+#1 {main}
+  thrown in C:\xampp\htdocs\StartSmartrh\controllers\ApplicationController.php on line 160
+[06-May-2026 11:42:45 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: Too few arguments to function ApplicationController::updateStatus(), 0 passed in C:\xampp\htdocs\StartSmartrh\index.php on line 72 and exactly 2 expected in C:\xampp\htdocs\StartSmartrh\controllers\ApplicationController.php:160
+Stack trace:
+#0 C:\xampp\htdocs\StartSmartrh\index.php(72): ApplicationController->updateStatus()
+#1 {main}
+  thrown in C:\xampp\htdocs\StartSmartrh\controllers\ApplicationController.php on line 160
+[06-May-2026 11:48:53 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 11:48:53 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 11:48:53 Europe/Berlin] searchJobOffers SQL Error: SQLSTATE[HY093]: Invalid parameter number
+[06-May-2026 11:57:15 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 11:57:15 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 11:57:15 Europe/Berlin] searchJobOffers SQL Error: SQLSTATE[HY093]: Invalid parameter number
+[06-May-2026 11:57:21 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 11:57:21 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 11:57:21 Europe/Berlin] searchJobOffers SQL Error: SQLSTATE[HY093]: Invalid parameter number
+[06-May-2026 12:00:47 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:00:47 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:00:47 Europe/Berlin] searchJobOffers SQL Error: SQLSTATE[HY093]: Invalid parameter number
+[06-May-2026 12:00:47 Europe/Berlin] searchJobOffers SQL Query: SELECT jo.*, u.full_name, u.company_name 
+                FROM job_offers jo 
+                JOIN users u ON jo.user_id = u.id 
+                WHERE jo.status = 'active' AND ((jo.title LIKE :kw0 
+                                           OR jo.description LIKE :kw0 
+                                           OR jo.requirements LIKE :kw0 
+                                           OR u.company_name LIKE :kw0) OR (jo.title LIKE :kw1 
+                                           OR jo.description LIKE :kw1 
+                                           OR jo.requirements LIKE :kw1 
+                                           OR u.company_name LIKE :kw1) OR (jo.title LIKE :kw2 
+                                           OR jo.description LIKE :kw2 
+                                           OR jo.requirements LIKE :kw2 
+                                           OR u.company_name LIKE :kw2)) ORDER BY jo.created_at DESC
+[06-May-2026 12:00:47 Europe/Berlin] searchJobOffers Params: {"kw0":"%prof%","kw1":"%math4%","kw2":"%years%"}
+[06-May-2026 12:09:40 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:09:40 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:09:40 Europe/Berlin] searchJobOffers SQL Error: SQLSTATE[HY093]: Invalid parameter number
+[06-May-2026 12:09:40 Europe/Berlin] searchJobOffers SQL Query: SELECT jo.*, u.full_name, u.company_name 
+                FROM job_offers jo 
+                JOIN users u ON jo.user_id = u.id 
+                WHERE jo.status = 'active' AND ((jo.title LIKE :kw0 
+                                           OR jo.description LIKE :kw0 
+                                           OR jo.requirements LIKE :kw0 
+                                           OR u.company_name LIKE :kw0) OR (jo.title LIKE :kw1 
+                                           OR jo.description LIKE :kw1 
+                                           OR jo.requirements LIKE :kw1 
+                                           OR u.company_name LIKE :kw1) OR (jo.title LIKE :kw2 
+                                           OR jo.description LIKE :kw2 
+                                           OR jo.requirements LIKE :kw2 
+                                           OR u.company_name LIKE :kw2)) ORDER BY jo.created_at DESC
+[06-May-2026 12:09:40 Europe/Berlin] searchJobOffers Params: {"kw0":"%prof%","kw1":"%math4%","kw2":"%years%"}
+[06-May-2026 12:11:58 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:11:58 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:11:58 Europe/Berlin] searchJobOffers SQL Error: SQLSTATE[HY093]: Invalid parameter number
+[06-May-2026 12:11:58 Europe/Berlin] searchJobOffers SQL Query: SELECT jo.*, u.full_name, u.company_name 
+                FROM job_offers jo 
+                JOIN users u ON jo.user_id = u.id 
+                WHERE jo.status = 'active' AND ((jo.title LIKE :kw0 
+                                           OR jo.description LIKE :kw0 
+                                           OR jo.requirements LIKE :kw0 
+                                           OR u.company_name LIKE :kw0) OR (jo.title LIKE :kw1 
+                                           OR jo.description LIKE :kw1 
+                                           OR jo.requirements LIKE :kw1 
+                                           OR u.company_name LIKE :kw1) OR (jo.title LIKE :kw2 
+                                           OR jo.description LIKE :kw2 
+                                           OR jo.requirements LIKE :kw2 
+                                           OR u.company_name LIKE :kw2)) ORDER BY jo.created_at DESC
+[06-May-2026 12:11:58 Europe/Berlin] searchJobOffers Params: {"kw0":"%prof%","kw1":"%math4%","kw2":"%years%"}
+[06-May-2026 12:26:02 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:26:02 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:26:02 Europe/Berlin] searchJobOffers SQL Error: SQLSTATE[HY093]: Invalid parameter number
+[06-May-2026 12:26:02 Europe/Berlin] searchJobOffers SQL Query: SELECT jo.*, u.full_name, u.company_name 
+                FROM job_offers jo 
+                JOIN users u ON jo.user_id = u.id 
+                WHERE jo.status = 'active' AND ((jo.title LIKE :kw0 
+                                           OR jo.description LIKE :kw0 
+                                           OR jo.requirements LIKE :kw0 
+                                           OR u.company_name LIKE :kw0) OR (jo.title LIKE :kw1 
+                                           OR jo.description LIKE :kw1 
+                                           OR jo.requirements LIKE :kw1 
+                                           OR u.company_name LIKE :kw1) OR (jo.title LIKE :kw2 
+                                           OR jo.description LIKE :kw2 
+                                           OR jo.requirements LIKE :kw2 
+                                           OR u.company_name LIKE :kw2)) ORDER BY jo.created_at DESC
+[06-May-2026 12:26:02 Europe/Berlin] searchJobOffers Params: {"kw0":"%prof%","kw1":"%math4%","kw2":"%years%"}
+[06-May-2026 12:27:07 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:27:07 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:27:07 Europe/Berlin] searchJobOffers SQL Error: SQLSTATE[HY093]: Invalid parameter number
+[06-May-2026 12:27:07 Europe/Berlin] searchJobOffers SQL Query: SELECT jo.*, u.full_name, u.company_name 
+                FROM job_offers jo 
+                JOIN users u ON jo.user_id = u.id 
+                WHERE jo.status = 'active' AND ((jo.title LIKE :kw0 OR jo.description LIKE :kw0 OR jo.requirements LIKE :kw0 OR u.company_name LIKE :kw0) OR (jo.title LIKE :kw1 OR jo.description LIKE :kw1 OR jo.requirements LIKE :kw1 OR u.company_name LIKE :kw1) OR (jo.title LIKE :kw2 OR jo.description LIKE :kw2 OR jo.requirements LIKE :kw2 OR u.company_name LIKE :kw2)) ORDER BY jo.created_at DESC
+[06-May-2026 12:27:07 Europe/Berlin] searchJobOffers Params: {"kw0":"%prof%","kw1":"%math4%","kw2":"%years%"}
+[06-May-2026 12:27:11 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:27:11 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:27:11 Europe/Berlin] searchJobOffers SQL Error: SQLSTATE[HY093]: Invalid parameter number
+[06-May-2026 12:27:11 Europe/Berlin] searchJobOffers SQL Query: SELECT jo.*, u.full_name, u.company_name 
+                FROM job_offers jo 
+                JOIN users u ON jo.user_id = u.id 
+                WHERE jo.status = 'active' AND ((jo.title LIKE :kw0 OR jo.description LIKE :kw0 OR jo.requirements LIKE :kw0 OR u.company_name LIKE :kw0) OR (jo.title LIKE :kw1 OR jo.description LIKE :kw1 OR jo.requirements LIKE :kw1 OR u.company_name LIKE :kw1) OR (jo.title LIKE :kw2 OR jo.description LIKE :kw2 OR jo.requirements LIKE :kw2 OR u.company_name LIKE :kw2)) ORDER BY jo.created_at DESC
+[06-May-2026 12:27:11 Europe/Berlin] searchJobOffers Params: {"kw0":"%prof%","kw1":"%math4%","kw2":"%years%"}
+[06-May-2026 12:28:06 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:28:06 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof math4","experience":"4 years","coverLetter":""}
+[06-May-2026 12:28:24 Europe/Berlin] DEBUG suggestJobs - input: {"position":"prof","experience":"4 years","coverLetter":""}
+[06-May-2026 12:28:24 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"prof","experience":"4 years","coverLetter":""}
+[06-May-2026 12:28:37 Europe/Berlin] DEBUG suggestJobs - input: {"position":"proff","experience":"4 years","coverLetter":""}
+[06-May-2026 12:28:37 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"proff","experience":"4 years","coverLetter":""}
+[06-May-2026 12:29:42 Europe/Berlin] DEBUG suggestJobs - input: {"position":"falah","experience":"4 years","coverLetter":""}
+[06-May-2026 12:29:42 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"falah","experience":"4 years","coverLetter":""}
+[06-May-2026 13:48:55 Europe/Berlin] DEBUG suggestJobs - input: {"position":"Tech Teacher","experience":"5 years","coverLetter":""}
+[06-May-2026 13:48:55 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"Tech Teacher","experience":"5 years","coverLetter":""}
+[06-May-2026 13:50:00 Europe/Berlin] === ADD JOB OFFER STARTED ===
+[06-May-2026 13:50:00 Europe/Berlin] Job offer created with ID: 9
+[06-May-2026 13:50:00 Europe/Berlin] Emails enabled: YES
+[06-May-2026 13:50:00 Europe/Berlin] Calling notifyJobSeekers...
+[06-May-2026 13:50:00 Europe/Berlin] === NOTIFY JOB SEEKERS STARTED ===
+[06-May-2026 13:50:00 Europe/Berlin] Job ID: 9, Startup ID: 2
+[06-May-2026 13:50:00 Europe/Berlin] Job Offer fetched: YES
+[06-May-2026 13:50:00 Europe/Berlin] Startup fetched: YES
+[06-May-2026 13:50:00 Europe/Berlin] Job Seekers found: 0
+[06-May-2026 13:50:00 Europe/Berlin] === NOTIFY JOB SEEKERS COMPLETED ===
+[06-May-2026 13:50:00 Europe/Berlin] === ADD JOB OFFER COMPLETED ===
+[06-May-2026 13:51:46 Europe/Berlin] === ADD JOB OFFER STARTED ===
+[06-May-2026 13:51:46 Europe/Berlin] Job offer created with ID: 10
+[06-May-2026 13:51:46 Europe/Berlin] Emails enabled: YES
+[06-May-2026 13:51:46 Europe/Berlin] Calling notifyJobSeekers...
+[06-May-2026 13:51:46 Europe/Berlin] === NOTIFY JOB SEEKERS STARTED ===
+[06-May-2026 13:51:46 Europe/Berlin] Job ID: 10, Startup ID: 2
+[06-May-2026 13:51:46 Europe/Berlin] Job Offer fetched: YES
+[06-May-2026 13:51:46 Europe/Berlin] Startup fetched: YES
+[06-May-2026 13:51:46 Europe/Berlin] Query: SELECT * FROM users WHERE role = 'job_seeker' AND email IS NOT NULL
+[06-May-2026 13:51:46 Europe/Berlin] Job Seekers found: 2
+[06-May-2026 13:51:46 Europe/Berlin]   - seeker@example.com (job_seeker)
+[06-May-2026 13:51:46 Europe/Berlin]   - youssefboussetta333@gmail.com (job_seeker)
+[06-May-2026 13:51:46 Europe/Berlin] Sending email to: seeker@example.com
+[06-May-2026 13:51:47 Europe/Berlin] === EMAIL SEND ATTEMPT ===
+[06-May-2026 13:51:47 Europe/Berlin] Subject: New Job Offer: adzadzeaz at Tech Innovations Inc
+[06-May-2026 13:51:47 Europe/Berlin] To: [{"email":"seeker@example.com","name":"Youssef Boussetta"}]
+[06-May-2026 13:51:47 Europe/Berlin] From: youssefboussetta333@gmail.com
+[06-May-2026 13:51:47 Europe/Berlin] HTTP Code: 201
+[06-May-2026 13:51:47 Europe/Berlin] Response: {"messageId":"<202605061151.29000874315@smtp-relay.mailin.fr>"}
+
+[06-May-2026 13:51:47 Europe/Berlin] Curl Error: 
+[06-May-2026 13:51:47 Europe/Berlin] ======================
+[06-May-2026 13:51:47 Europe/Berlin] ✓ Email sent successfully. Subject: New Job Offer: adzadzeaz at Tech Innovations Inc
+[06-May-2026 13:51:47 Europe/Berlin] Sending email to: youssefboussetta333@gmail.com
+[06-May-2026 13:51:47 Europe/Berlin] === EMAIL SEND ATTEMPT ===
+[06-May-2026 13:51:47 Europe/Berlin] Subject: New Job Offer: adzadzeaz at Tech Innovations Inc
+[06-May-2026 13:51:47 Europe/Berlin] To: [{"email":"youssefboussetta333@gmail.com","name":"Youssef Boussetta"}]
+[06-May-2026 13:51:47 Europe/Berlin] From: youssefboussetta333@gmail.com
+[06-May-2026 13:51:47 Europe/Berlin] HTTP Code: 201
+[06-May-2026 13:51:47 Europe/Berlin] Response: {"messageId":"<202605061151.76342676122@smtp-relay.mailin.fr>"}
+
+[06-May-2026 13:51:47 Europe/Berlin] Curl Error: 
+[06-May-2026 13:51:47 Europe/Berlin] ======================
+[06-May-2026 13:51:47 Europe/Berlin] ✓ Email sent successfully. Subject: New Job Offer: adzadzeaz at Tech Innovations Inc
+[06-May-2026 13:51:47 Europe/Berlin] === NOTIFY JOB SEEKERS COMPLETED ===
+[06-May-2026 13:51:47 Europe/Berlin] === ADD JOB OFFER COMPLETED ===
+[06-May-2026 13:52:49 Europe/Berlin] DEBUG suggestJobs - input: {"position":"Tech Teacher","experience":"5 years","coverLetter":""}
+[06-May-2026 13:52:49 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"Tech Teacher","experience":"5 years","coverLetter":""}
+[06-May-2026 13:57:58 Europe/Berlin] === ADD JOB OFFER STARTED ===
+[06-May-2026 13:57:58 Europe/Berlin] Job offer created with ID: 11
+[06-May-2026 13:57:58 Europe/Berlin] Emails enabled: YES
+[06-May-2026 13:57:58 Europe/Berlin] Calling notifyJobSeekers...
+[06-May-2026 13:57:58 Europe/Berlin] === NOTIFY JOB SEEKERS STARTED ===
+[06-May-2026 13:57:58 Europe/Berlin] Job ID: 11, Startup ID: 2
+[06-May-2026 13:57:58 Europe/Berlin] Job Offer fetched: YES
+[06-May-2026 13:57:58 Europe/Berlin] Startup fetched: YES
+[06-May-2026 13:57:58 Europe/Berlin] Query: SELECT * FROM users WHERE role = 'job_seeker' AND email IS NOT NULL
+[06-May-2026 13:57:58 Europe/Berlin] Job Seekers found: 2
+[06-May-2026 13:57:58 Europe/Berlin]   - seeker@example.com (job_seeker)
+[06-May-2026 13:57:58 Europe/Berlin]   - youssefboussetta333@gmail.com (job_seeker)
+[06-May-2026 13:57:58 Europe/Berlin] Sending email to: seeker@example.com
+[06-May-2026 13:57:59 Europe/Berlin] === EMAIL SEND ATTEMPT ===
+[06-May-2026 13:57:59 Europe/Berlin] Subject: New Job Offer: moulezem at Tech Innovations Inc
+[06-May-2026 13:57:59 Europe/Berlin] To: [{"email":"seeker@example.com","name":"Youssef Boussetta"}]
+[06-May-2026 13:57:59 Europe/Berlin] From: youssefboussetta333@gmail.com
+[06-May-2026 13:57:59 Europe/Berlin] HTTP Code: 201
+[06-May-2026 13:57:59 Europe/Berlin] Response: {"messageId":"<202605061157.81962272184@smtp-relay.mailin.fr>"}
+
+[06-May-2026 13:57:59 Europe/Berlin] Curl Error: 
+[06-May-2026 13:57:59 Europe/Berlin] ======================
+[06-May-2026 13:57:59 Europe/Berlin] ✓ Email sent successfully. Subject: New Job Offer: moulezem at Tech Innovations Inc
+[06-May-2026 13:57:59 Europe/Berlin] Sending email to: youssefboussetta333@gmail.com
+[06-May-2026 13:57:59 Europe/Berlin] === EMAIL SEND ATTEMPT ===
+[06-May-2026 13:57:59 Europe/Berlin] Subject: New Job Offer: moulezem at Tech Innovations Inc
+[06-May-2026 13:57:59 Europe/Berlin] To: [{"email":"youssefboussetta333@gmail.com","name":"Youssef Boussetta"}]
+[06-May-2026 13:57:59 Europe/Berlin] From: youssefboussetta333@gmail.com
+[06-May-2026 13:57:59 Europe/Berlin] HTTP Code: 201
+[06-May-2026 13:57:59 Europe/Berlin] Response: {"messageId":"<202605061157.80925369056@smtp-relay.mailin.fr>"}
+
+[06-May-2026 13:57:59 Europe/Berlin] Curl Error: 
+[06-May-2026 13:57:59 Europe/Berlin] ======================
+[06-May-2026 13:57:59 Europe/Berlin] ✓ Email sent successfully. Subject: New Job Offer: moulezem at Tech Innovations Inc
+[06-May-2026 13:57:59 Europe/Berlin] === NOTIFY JOB SEEKERS COMPLETED ===
+[06-May-2026 13:57:59 Europe/Berlin] === ADD JOB OFFER COMPLETED ===
+[06-May-2026 14:00:21 Europe/Berlin] === ADD JOB OFFER STARTED ===
+[06-May-2026 14:00:21 Europe/Berlin] Job offer created with ID: 12
+[06-May-2026 14:00:21 Europe/Berlin] Emails enabled: YES
+[06-May-2026 14:00:21 Europe/Berlin] Calling notifyJobSeekers...
+[06-May-2026 14:00:21 Europe/Berlin] === NOTIFY JOB SEEKERS STARTED ===
+[06-May-2026 14:00:21 Europe/Berlin] Job ID: 12, Startup ID: 2
+[06-May-2026 14:00:21 Europe/Berlin] Job Offer fetched: YES
+[06-May-2026 14:00:21 Europe/Berlin] Startup fetched: YES
+[06-May-2026 14:00:21 Europe/Berlin] Query: SELECT * FROM users WHERE role = 'job_seeker' AND email IS NOT NULL
+[06-May-2026 14:00:21 Europe/Berlin] Job Seekers found: 2
+[06-May-2026 14:00:21 Europe/Berlin]   - seeker@example.com (job_seeker)
+[06-May-2026 14:00:21 Europe/Berlin]   - youssefboussetta333@gmail.com (job_seeker)
+[06-May-2026 14:00:21 Europe/Berlin] Sending email to: seeker@example.com
+[06-May-2026 14:00:21 Europe/Berlin] === EMAIL SEND ATTEMPT ===
+[06-May-2026 14:00:21 Europe/Berlin] Subject: New Job Offer: prof at Tech Innovations Inc
+[06-May-2026 14:00:21 Europe/Berlin] To: [{"email":"seeker@example.com","name":"Youssef Boussetta"}]
+[06-May-2026 14:00:21 Europe/Berlin] From: youssefboussetta333@gmail.com
+[06-May-2026 14:00:21 Europe/Berlin] HTTP Code: 201
+[06-May-2026 14:00:21 Europe/Berlin] Response: {"messageId":"<202605061200.24615328600@smtp-relay.mailin.fr>"}
+
+[06-May-2026 14:00:21 Europe/Berlin] Curl Error: 
+[06-May-2026 14:00:21 Europe/Berlin] ======================
+[06-May-2026 14:00:21 Europe/Berlin] ✓ Email sent successfully. Subject: New Job Offer: prof at Tech Innovations Inc
+[06-May-2026 14:00:21 Europe/Berlin] Sending email to: youssefboussetta333@gmail.com
+[06-May-2026 14:00:22 Europe/Berlin] === EMAIL SEND ATTEMPT ===
+[06-May-2026 14:00:22 Europe/Berlin] Subject: New Job Offer: prof at Tech Innovations Inc
+[06-May-2026 14:00:22 Europe/Berlin] To: [{"email":"youssefboussetta333@gmail.com","name":"Youssef Boussetta"}]
+[06-May-2026 14:00:22 Europe/Berlin] From: youssefboussetta333@gmail.com
+[06-May-2026 14:00:22 Europe/Berlin] HTTP Code: 201
+[06-May-2026 14:00:22 Europe/Berlin] Response: {"messageId":"<202605061200.58613655457@smtp-relay.mailin.fr>"}
+
+[06-May-2026 14:00:22 Europe/Berlin] Curl Error: 
+[06-May-2026 14:00:22 Europe/Berlin] ======================
+[06-May-2026 14:00:22 Europe/Berlin] ✓ Email sent successfully. Subject: New Job Offer: prof at Tech Innovations Inc
+[06-May-2026 14:00:22 Europe/Berlin] === NOTIFY JOB SEEKERS COMPLETED ===
+[06-May-2026 14:00:22 Europe/Berlin] === ADD JOB OFFER COMPLETED ===
+[06-May-2026 14:03:21 Europe/Berlin] DEBUG suggestJobs - input: {"position":"Tech Teacher","experience":"5 years","coverLetter":"yes"}
+[06-May-2026 14:03:21 Europe/Berlin] DEBUG suggestJobs - _POST: {"position":"Tech Teacher","experience":"5 years","coverLetter":"yes"}
+[06-May-2026 14:03:38 Europe/Berlin] === EMAIL SEND ATTEMPT ===
+[06-May-2026 14:03:38 Europe/Berlin] Subject: New Application: Youssef Boussetta applied for prof
+[06-May-2026 14:03:38 Europe/Berlin] To: [{"email":"startup@example.com","name":"Demo Startup"}]
+[06-May-2026 14:03:38 Europe/Berlin] From: youssefboussetta333@gmail.com
+[06-May-2026 14:03:38 Europe/Berlin] HTTP Code: 201
+[06-May-2026 14:03:38 Europe/Berlin] Response: {"messageId":"<202605061203.13784114530@smtp-relay.mailin.fr>"}
+
+[06-May-2026 14:03:38 Europe/Berlin] Curl Error: 
+[06-May-2026 14:03:38 Europe/Berlin] ======================
+[06-May-2026 14:03:38 Europe/Berlin] ✓ Email sent successfully. Subject: New Application: Youssef Boussetta applied for prof
+[06-May-2026 14:07:18 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: Too few arguments to function ApplicationController::updateStatus(), 0 passed in C:\xampp\htdocs\StartSmartrh\index.php on line 72 and exactly 2 expected in C:\xampp\htdocs\StartSmartrh\controllers\ApplicationController.php:277
+Stack trace:
+#0 C:\xampp\htdocs\StartSmartrh\index.php(72): ApplicationController->updateStatus()
+#1 {main}
+  thrown in C:\xampp\htdocs\StartSmartrh\controllers\ApplicationController.php on line 277
+[06-May-2026 14:07:34 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: Too few arguments to function ApplicationController::updateStatus(), 0 passed in C:\xampp\htdocs\StartSmartrh\index.php on line 72 and exactly 2 expected in C:\xampp\htdocs\StartSmartrh\controllers\ApplicationController.php:277
+Stack trace:
+#0 C:\xampp\htdocs\StartSmartrh\index.php(72): ApplicationController->updateStatus()
+#1 {main}
+  thrown in C:\xampp\htdocs\StartSmartrh\controllers\ApplicationController.php on line 277
+[06-May-2026 14:20:01 Europe/Berlin] === EMAIL SEND ATTEMPT ===
+[06-May-2026 14:20:01 Europe/Berlin] Subject: Congratulations! Your application for prof has been accepted
+[06-May-2026 14:20:01 Europe/Berlin] To: [{"email":"youssefboussetta333@gmail.com","name":"Youssef Boussetta"}]
+[06-May-2026 14:20:01 Europe/Berlin] From: youssefboussetta333@gmail.com
+[06-May-2026 14:20:01 Europe/Berlin] HTTP Code: 201
+[06-May-2026 14:20:01 Europe/Berlin] Response: {"messageId":"<202605061220.84332482712@smtp-relay.mailin.fr>"}
+
+[06-May-2026 14:20:01 Europe/Berlin] Curl Error: 
+[06-May-2026 14:20:01 Europe/Berlin] ======================
+[06-May-2026 14:20:01 Europe/Berlin] ✓ Email sent successfully. Subject: Congratulations! Your application for prof has been accepted
+[06-May-2026 14:20:10 Europe/Berlin] === EMAIL SEND ATTEMPT ===
+[06-May-2026 14:20:10 Europe/Berlin] Subject: Congratulations! Your application for prof has been accepted
+[06-May-2026 14:20:10 Europe/Berlin] To: [{"email":"youssefboussetta333@gmail.com","name":"Youssef Boussetta"}]
+[06-May-2026 14:20:10 Europe/Berlin] From: youssefboussetta333@gmail.com
+[06-May-2026 14:20:10 Europe/Berlin] HTTP Code: 201
+[06-May-2026 14:20:10 Europe/Berlin] Response: {"messageId":"<202605061220.79235778047@smtp-relay.mailin.fr>"}
+
+[06-May-2026 14:20:10 Europe/Berlin] Curl Error: 
+[06-May-2026 14:20:10 Europe/Berlin] ======================
+[06-May-2026 14:20:10 Europe/Berlin] ✓ Email sent successfully. Subject: Congratulations! Your application for prof has been accepted
