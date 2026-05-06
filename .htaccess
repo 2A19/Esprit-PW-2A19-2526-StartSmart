@@ -1,0 +1,9 @@
+RewriteEngine On
+RewriteBase /startsamart%20Front1/startsamart%20Front/
+
+# Ignore if it's an existing file or directory (like css, js, images)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route everything else to index.php
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]

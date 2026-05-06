@@ -1,0 +1,315 @@
+/* --- RESET ET STYLE GÉNÉRAL --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial Black', sans-serif;
+}
+
+/* --- NAVBAR --- */
+.navbar {
+    background-color: #64C5EB;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 40px;
+    height: 80px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo-img { height: 50px; }
+
+.nav-links { display: flex; align-items: center; gap: 10px; }
+.nav-btn {
+    text-decoration: none;
+    color: white;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 5px;
+    transition: 0.3s;
+}
+.nav-btn:hover { background: rgba(11, 28, 72, 0.2); }
+
+.btn-get-started {
+    background-color: #2ECC71;
+    color: white;
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+/* --- SECTION HERO --- */
+.hero-section {
+    background-color: #0B1C48;
+    min-height: 550px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 60px 10%;
+    color: white;
+}
+
+.hero-content { max-width: 50%; }
+.hero-content h1 { font-size: 50px; margin-bottom: 10px; }
+.hero-subtitle { font-size: 26px; color: #2ECC71; margin-bottom: 20px; }
+.hero-description { color: #bdc3c7; line-height: 1.6; font-family: Arial; }
+
+/* Conteneur de l'image de droite */
+.hero-image-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40%;
+}
+
+/* STYLE DE L'IMAGE DESIGN EN ROTATION SEULE */
+.img-rotation-only {
+    width: 350px; /* Taille de ton design géométrique */
+    height: auto;
+    animation: rotationLente 15s linear infinite;
+}
+
+@keyframes rotationLente {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* --- SECTION CARTES --- */
+.services-container {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    padding: 50px 5%;
+    margin-top: -80px;
+}
+
+.card {
+    background-color: white;
+    border-radius: 20px;
+    padding: 40px 25px;
+    text-align: center;
+    width: 330px;
+    text-decoration: none;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.card:hover {
+    transform: translateY(-20px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    border-color: #64C5EB;
+}
+
+.card-icon img { height: 70px; margin-bottom: 15px; }
+.card h3 { color: #0B1C48; margin-bottom: 10px; }
+.card p { font-size: 14px; color: #777; font-family: Arial; }
+
+/* --- DROPDOWN --- */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1001;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+.dropdown-content a:hover {
+    background-color: #64C5EB;
+    color: white;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+/* --- BACK-OFFICE LAYOUT --- */
+.container-box {
+    padding: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fc;
+    min-height: calc(100vh - 80px);
+}
+
+.bo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.bo-header h2 {
+    color: #0B1C48;
+    font-family: 'Arial Black', sans-serif;
+}
+
+.btn-primary {
+    background-color: #2ECC71;
+    color: white;
+    padding: 10px 15px;
+    text-decoration: none;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.btn-primary:hover {
+    background-color: #27ae60;
+}
+
+.btn-secondary {
+    background-color: #64C5EB;
+    color: white;
+    padding: 10px 15px;
+    text-decoration: none;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.btn-secondary:hover {
+    background-color: #52a6c8;
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+    padding: 5px 10px;
+    text-decoration: none;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+.btn-edit {
+    background-color: #f39c12;
+    color: white;
+    padding: 5px 10px;
+    text-decoration: none;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-edit:hover {
+    background-color: #d68910;
+}
+
+/* --- SEARCH BAR --- */
+.search-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.search-input {
+    padding: 10px;
+    width: 300px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+/* --- DATA TABLES --- */
+.bo-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+.bo-table th, .bo-table td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+.bo-table th {
+    background-color: #0B1C48;
+    color: white;
+    font-family: 'Arial Black', sans-serif;
+    font-size: 13px;
+}
+
+.bo-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* --- FORMS --- */
+.bo-form {
+    background-color: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.bo-form .form-group {
+    margin-bottom: 15px;
+}
+
+.bo-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    color: #333;
+}
+
+.bo-form input, .bo-form select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+/* --- CHARTS --- */
+.chart-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+    height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
