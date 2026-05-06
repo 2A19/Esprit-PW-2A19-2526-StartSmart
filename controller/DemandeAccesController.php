@@ -7,12 +7,18 @@
 require_once __DIR__ . '/../model/DemandeAcces.php';
 require_once __DIR__ . '/../model/Ressource.php';
 require_once __DIR__ . '/../model/Utilisateur.php';
+require_once __DIR__ . '/../model/Sponsor.php';
 require_once __DIR__ . '/../config/Validator.php';
+require_once __DIR__ . '/../service/TwilioSMSService.php';
+require_once __DIR__ . '/../config/Database.php';
 
 class DemandeAccesController {
     private $demande;
     private $ressource;
     private $utilisateur;
+    private $sponsor;
+    private $smsService;
+    private $db;
     private $errors = [];
     private $success = [];
     
@@ -20,6 +26,16 @@ class DemandeAccesController {
         $this->demande = new DemandeAcces();
         $this->ressource = new Ressource();
         $this->utilisateur = new Utilisateur();
+        $this->sponsor = new Sponsor();
+        $this->db = Database::getInstance()->getConnection();
+        
+        // Initialiser le service SMS si les credentials Twilio sont configurés
+        try {
+            $this->smsService = new TwilioSMSService();
+        } catch (Exception $e) {
+            $this->smsService = null;
+            // SMS optionnel - ne pas bloquer l'application
+        }
     }
     
     /**
@@ -66,10 +82,15 @@ class DemandeAccesController {
         
         if (!$user) {
             // Créer un nouvel utilisateur
+            // Générer un email unique à partir du nom d'utilisateur
+            $email = $this->generateUniqueEmail($userName);
+            
             $userData = [
                 'nom_utilisateur' => $userName,
-                'email_utilisateur' => null,
+                'email_utilisateur' => $email,
+                'telephone' => null,
                 'entreprise' => 'Non spécifiée',
+                'domaine_activite' => null,
                 'statut' => 'actif'
             ];
             
@@ -111,13 +132,74 @@ class DemandeAccesController {
             'duree_acces_jours' => intval($data['duree_acces_jours'] ?? 30)
         ];
         
-        // Création
+        // Création de la demande
         if ($this->demande->create($cleanData)) {
             $this->success[] = "Demande d'accès créée avec succès. En attente d'approbation du sponsor.";
+            
+            // Envoyer une notification SMS au sponsor
+            try {
+                $this->sendSponsorNotification($ressource, $userName);
+            } catch (Exception $e) {
+                // Log l'erreur SMS mais ne bloque pas le flux
+                error_log("Erreur lors de l'envoi du SMS: " . $e->getMessage());
+            }
+            
             return true;
         } else {
             $this->errors[] = "Erreur lors de la création de la demande";
             return false;
+        }
+    }
+    
+    /**
+     * Envoie une notification SMS au sponsor
+     * @param array $ressource Données de la ressource
+     * @param string $userName Nom de l'utilisateur
+     * @return void
+     */
+    private function sendSponsorNotification($ressource, $userName) {
+        $sponsor = $this->sponsor->getById($ressource['id_sponsor']);
+        $sponsorName = $sponsor ? $sponsor['nom_sponsor'] : 'Sponsor';
+        $resourceName = $ressource['nom_ressource'];
+
+        $smsSent = false;
+        if ($this->smsService && $sponsor && !empty($sponsor['telephone'])) {
+            $smsSent = $this->smsService->notifyNewDemande(
+                $sponsor['telephone'],
+                $userName,
+                $resourceName
+            );
+        }
+
+        // Envoyer aussi un SMS à l'administrateur
+        if ($this->smsService && defined('ADMIN_PHONE_NUMBER') && !empty(ADMIN_PHONE_NUMBER)) {
+            $adminMsg  = "🔔 StartSmart - Nouvelle demande\n";
+            $adminMsg .= "Utilisateur: $userName\n";
+            $adminMsg .= "Ressource: $resourceName\n";
+            $adminMsg .= "Sponsor: $sponsorName\n";
+            $adminMsg .= "Connectez-vous au backoffice pour traiter la demande.";
+            $this->smsService->sendSMS(ADMIN_PHONE_NUMBER, $adminMsg);
+        }
+
+        // Toujours sauvegarder la notification dans la base de données
+        $this->saveNotification($userName, $resourceName, $sponsorName, $smsSent);
+    }
+
+    /**
+     * Enregistre une notification dans la base de données
+     */
+    private function saveNotification($userName, $resourceName, $sponsorName, $smsSent) {
+        try {
+            $smsStatus = $smsSent ? '✅ SMS envoyé' : '📋 Enregistrée';
+            $title = "Nouvelle demande - $resourceName";
+            $message = "$userName a soumis une demande pour \"$resourceName\" (Sponsor: $sponsorName). $smsStatus au sponsor.";
+
+            $stmt = $this->db->prepare(
+                "INSERT INTO notifications (type, title, message, is_read, created_at) VALUES ('sms', ?, ?, 0, NOW())"
+            );
+            $stmt->execute([$title, $message]);
+        } catch (Exception $e) {
+            error_log("Erreur sauvegarde notification: " . $e->getMessage());
         }
     }
     
@@ -231,6 +313,18 @@ class DemandeAccesController {
      */
     public function getSuccess() {
         return $this->success;
+    }
+    
+    /**
+     * Génère un email unique à partir du nom d'utilisateur
+     * Format: username_timestamp@startsmart.local
+     * @param string $userName Le nom d'utilisateur
+     * @return string
+     */
+    private function generateUniqueEmail($userName) {
+        $slug = strtolower(preg_replace('/[^a-z0-9]+/', '_', $userName));
+        $timestamp = time();
+        return $slug . '_' . $timestamp . '@startsmart.local';
     }
 }
 ?>

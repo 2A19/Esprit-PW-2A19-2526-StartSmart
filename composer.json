@@ -1,0 +1,13 @@
+{
+    "name": "startsmart/app",
+    "description": "StartSmart - Resource Management Application",
+    "require": {
+        "twilio/sdk": "^8.0",
+        "vlucas/phpdotenv": "^5.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "StartSmart\\": "src/"
+        }
+    }
+}
