@@ -111,6 +111,9 @@ function submitComment(e) {
     const parentId = document.getElementById('parent_id').value;
     const contenu = textarea.value.trim();
 
+    const form = document.getElementById('commentForm');
+    const formData = new FormData(form);
+
     if (contenu.length < 2) {
         alert('Votre commentaire doit contenir au moins 2 caractères.');
         btnSubmit.disabled = false;
@@ -121,14 +124,7 @@ function submitComment(e) {
     
     fetch('index.php?controller=commentaire&action=addAsync', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            post_id: postId,
-            parent_id: parentId,
-            contenu: contenu
-        })
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
@@ -147,3 +143,33 @@ function submitComment(e) {
     });
 }
 
+function translateText(contentId, targetLang) {
+    const contentEl = document.getElementById(contentId);
+    if (!contentEl) return;
+    
+    // Save original if not saved yet
+    if (!contentEl.hasAttribute('data-original')) {
+        contentEl.setAttribute('data-original', contentEl.innerHTML);
+    }
+    
+    if (targetLang === 'original') {
+        contentEl.innerHTML = contentEl.getAttribute('data-original');
+        return;
+    }
+
+    const originalText = contentEl.getAttribute('data-original');
+    
+    // Call the translate endpoint
+    fetch('index.php?controller=forumApi&action=translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: originalText, targetLang: targetLang })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            contentEl.innerHTML = data.translatedText;
+        }
+    })
+    .catch(err => console.error('Translation error:', err));
+}

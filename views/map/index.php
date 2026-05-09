@@ -215,6 +215,11 @@
 <script src="//unpkg.com/globe.gl"></script>
 
 <div class="map-container">
+    <div id="map-loading-overlay" style="position:absolute; inset:0; background:rgba(11,28,72,0.7); z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(5px); color:white;">
+        <div class="skeleton" style="width:120px; height:120px; border-radius:50%; margin-bottom:20px; animation: pulse 1.5s infinite;"></div>
+        <h3 style="margin:0; font-family:'Syne', sans-serif;">Chargement du Globe 3D...</h3>
+    </div>
+
     <div class="map-overlay" id="mapOverlay">
         <button class="minimize-btn" onclick="document.getElementById('mapOverlay').classList.toggle('minimized')">−</button>
         <h2>Ecosystème Mondial</h2>
@@ -362,6 +367,10 @@
     }
 
     function loadData() {
+        // Show loading state
+        const overlay = document.getElementById('map-loading-overlay');
+        if (overlay) overlay.style.display = 'flex';
+
         const url = currentMode === 'startups' 
             ? 'index.php?controller=map&action=apiData' 
             : 'index.php?controller=forumApi&action=feed';
@@ -374,7 +383,13 @@
                     updateGlobe(allData);
                 }
             })
-            .catch(err => console.error('Error fetching map data:', err));
+            .catch(err => console.error('Error fetching map data:', err))
+            .finally(() => {
+                // Hide loading state after brief simulated delay for effect
+                setTimeout(() => {
+                    if (overlay) overlay.style.display = 'none';
+                }, 500);
+            });
 
         if (currentMode === 'forum') {
             loadForumSidePanel();

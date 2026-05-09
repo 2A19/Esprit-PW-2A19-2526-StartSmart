@@ -16,6 +16,77 @@
         </div>
     <?php endif; ?>
 
+    <!-- PERFORMANCE STATS & CHARTS -->
+    <div style="display: grid; grid-template-columns: 250px 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+        
+        <!-- Performance Score -->
+        <div style="background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+            <h3 style="margin: 0 0 15px 0; color: #0B1C48; font-size: 15px;">Readiness Score</h3>
+            <div style="position: relative; width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(#2ecc71 <?php echo rand(65, 95); ?>%, #e2e8f0 0); display: flex; align-items: center; justify-content: center;">
+                <div style="position: absolute; width: 100px; height: 100px; background: white; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <span style="font-size: 24px; font-weight: 800; color: #0B1C48;">85%</span>
+                    <span style="font-size: 10px; color: #95a5a6; font-weight: bold;">EXCELLENT</span>
+                </div>
+            </div>
+            <p style="margin: 15px 0 0 0; font-size: 12px; color: #7f8c8d;">Votre profil est très attractif pour les investisseurs.</p>
+        </div>
+
+        <!-- Growth Chart -->
+        <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+            <h3 style="margin: 0 0 10px 0; color: #0B1C48; font-size: 15px;">Croissance d'Audience</h3>
+            <div style="position: relative; height: 180px; width: 100%;">
+                <canvas id="growthChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Activity Chart -->
+        <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+            <h3 style="margin: 0 0 10px 0; color: #0B1C48; font-size: 15px;">Activité Forum</h3>
+            <div style="position: relative; height: 180px; width: 100%;">
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Growth Chart (Line)
+            new Chart(document.getElementById('growthChart'), {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'],
+                    datasets: [{
+                        label: 'Vues Profil',
+                        data: [12, 19, 35, 50, 42, 85],
+                        borderColor: '#4FC3F7',
+                        backgroundColor: 'rgba(79,195,247,0.2)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+
+            // Activity Chart (Bar)
+            new Chart(document.getElementById('activityChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Posts', 'Comments', 'Likes', 'Saves'],
+                    datasets: [{
+                        label: 'Activité',
+                        data: [5, 23, 45, 12],
+                        backgroundColor: ['#2ecc71', '#3498db', '#f1c40f', '#e74c3c'],
+                        borderRadius: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+        });
+    </script>
+
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
         
         <!-- Preferences / Skills -->

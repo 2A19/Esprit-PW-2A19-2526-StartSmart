@@ -118,7 +118,7 @@ class ProjectMatcher {
         $query = "
             SELECT 
                 COALESCE((SELECT COUNT(*) FROM post WHERE auteur_id = ?), 0) as posts_count,
-                COALESCE((SELECT COUNT(*) FROM post_reaction WHERE user_id = ?), 0) as reactions_count,
+                COALESCE((SELECT COUNT(*) FROM reaction WHERE user_id = ?), 0) as reactions_count,
                 COALESCE((SELECT COUNT(*) FROM commentaire WHERE auteur_id = ?), 0) as comments_count,
                 COALESCE((SELECT COUNT(*) FROM projet_reaction WHERE user_id = ?), 0) as projet_reactions_count,
                 COALESCE((SELECT COUNT(*) FROM projet_commentaire WHERE auteur_id = ?), 0) as projet_comments_count
@@ -138,11 +138,11 @@ class ProjectMatcher {
         $query_avg = "
             SELECT AVG(activity_score) as avg_score FROM (
                 SELECT 
-                    (COUNT(p.id) * 10 + COUNT(pr.id) * 1 + COUNT(c.id) * 2 + 
-                     COUNT(pjr.id) * 1 + COUNT(pjc.id) * 2) as activity_score
+                     (COUNT(p.id_post) * 10 + COUNT(pr.id_reaction) * 1 + COUNT(c.id_commentaire) * 2 + 
+                         COUNT(pjr.id) * 1 + COUNT(pjc.id) * 2) as activity_score
                 FROM utilisateur u
                 LEFT JOIN post p ON u.id_utilisateur = p.auteur_id
-                LEFT JOIN post_reaction pr ON u.id_utilisateur = pr.user_id
+                LEFT JOIN reaction pr ON u.id_utilisateur = pr.user_id
                 LEFT JOIN commentaire c ON u.id_utilisateur = c.auteur_id
                 LEFT JOIN projet_reaction pjr ON u.id_utilisateur = pjr.user_id
                 LEFT JOIN projet_commentaire pjc ON u.id_utilisateur = pjc.auteur_id
@@ -205,7 +205,7 @@ class ProjectMatcher {
     /**
      * Get matching skills for display
      */
-    private function getMatchedSkills($user_id, $projet_id) {
+    public function getMatchedSkills($user_id, $projet_id) {
         $query = "
             SELECT DISTINCT s.id, s.name, s.category
             FROM skill s
@@ -222,7 +222,7 @@ class ProjectMatcher {
     /**
      * Get required skills for project
      */
-    private function getRequiredSkills($projet_id) {
+    public function getRequiredSkills($projet_id) {
         $query = "
             SELECT s.id, s.name, s.category, ps.required, ps.priority
             FROM skill s

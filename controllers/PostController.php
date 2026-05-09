@@ -84,8 +84,15 @@ class PostController {
 
         // Group comments by parent_id for threading
         $commentsTree = [];
-        foreach ($commentaires as $c) {
+        require_once 'models/Attachment.php';
+        $attachmentModel = new Attachment($this->db);
+        
+        $postAttachments = $attachmentModel->getByPostId($this->post->id_post);
+
+        foreach ($commentaires as &$c) {
             $parentId = $c['parent_id'] ?: 0;
+            // Fetch attachments for this comment
+            $c['attachments'] = $attachmentModel->getByCommentId($c['id_commentaire']);
             $commentsTree[$parentId][] = $c;
         }
 
@@ -125,6 +132,22 @@ class PostController {
             $this->post->projet_id = $formProjetId ?: $smartData['projet_id'];
 
             if ($this->post->create()) {
+                $newPostId = $this->db->lastInsertId();
+                if (!empty($_FILES['attachments'])) {
+                    require_once 'services/FileService.php';
+                    require_once 'models/Attachment.php';
+                    $uploads = FileService::processUploads($_FILES['attachments']);
+                    $attachmentModel = new Attachment($this->db);
+                    foreach ($uploads as $fileData) {
+                        $attachmentModel->nom_fichier = $fileData['nom_fichier'];
+                        $attachmentModel->chemin_fichier = $fileData['chemin_fichier'];
+                        $attachmentModel->type_fichier = $fileData['type_fichier'];
+                        $attachmentModel->taille_fichier = $fileData['taille_fichier'];
+                        $attachmentModel->post_id = $newPostId;
+                        $attachmentModel->commentaire_id = null;
+                        $attachmentModel->create();
+                    }
+                }
                 header("Location: index.php?controller=post&action=index");
                 exit;
             } else {

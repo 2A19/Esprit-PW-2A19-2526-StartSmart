@@ -14,7 +14,7 @@
     <div id="error-msg-post" style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px; display:none; margin-bottom:20px; font-weight:bold;"></div>
 
     <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
-        <form id="formPost" action="index.php?controller=post&action=create" method="POST" onsubmit="return validerPost(event)">
+        <form id="formPost" action="index.php?controller=post&action=create" method="POST" enctype="multipart/form-data" onsubmit="return validerPost(event)">
             
             <h3 style="margin-top: 0; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px; margin-bottom: 25px; color: #2c3e50;">Détails de la discussion</h3>
 
@@ -60,7 +60,30 @@
 
             <div class="form-group" style="margin-bottom: 30px;">
                 <label style="display: block; font-weight: bold; margin-bottom: 8px; color: #34495e;">Contenu de la discussion *</label>
-                <textarea id="contenu_post" name="contenu" rows="8" placeholder="Détaillez votre pensée ici. Si vous mentionnez des secteurs (IA, Fintech) ou des lieux (Paris, Tunis), notre moteur les détectera automatiquement !" style="width: 100%; padding: 15px; border: 1px solid #dce1e6; border-radius: 8px; font-size: 15px; font-family: inherit; resize: vertical; transition: border-color 0.3s;" onfocus="this.style.borderColor='#3498db'" onblur="this.style.borderColor='#dce1e6'"></textarea>
+                <div class="dictation-wrapper">
+                    <textarea id="contenu_post" name="contenu" rows="8" placeholder="Détaillez votre pensée ici. Vous pouvez aussi utiliser le microphone pour dicter votre texte !" style="width: 100%; padding: 15px; padding-bottom: 40px; border: 1px solid #dce1e6; border-radius: 8px; font-size: 15px; font-family: inherit; resize: vertical; transition: border-color 0.3s;" onfocus="this.style.borderColor='#3498db'" onblur="this.style.borderColor='#dce1e6'"></textarea>
+                    
+                    <div class="dictation-controls">
+                        <select class="dictation-lang" title="Choisir la langue de dictée">
+                            <option value="en-US">EN</option>
+                            <option value="fr-FR" selected>FR</option>
+                            <option value="ar-SA">AR</option>
+                        </select>
+                        <button type="button" class="dictation-btn" onclick="toggleDictation('contenu_post', this)" title="Cliquer pour parler">
+                            <i class="fa-solid fa-microphone"></i>
+                        </button>
+                    </div>
+                    <div class="dictation-interim"></div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 30px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 8px; color: #34495e;">Pièces jointes (Max 5MB)</label>
+                <div style="padding: 20px; border: 2px dashed #dce1e6; border-radius: 8px; text-align: center; background: #fafafa; cursor: pointer;" onclick="document.getElementById('attachments').click()">
+                    <i data-lucide="paperclip" style="width: 24px; height: 24px; color: #7f8c8d; margin-bottom: 10px;"></i>
+                    <p style="margin: 0; color: #7f8c8d; font-size: 14px;">Cliquez pour ajouter des images ou documents PDF</p>
+                    <input type="file" id="attachments" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx" style="display: none;" onchange="this.parentElement.querySelector('p').innerText = this.files.length + ' fichier(s) sélectionné(s)'">
+                </div>
             </div>
             
             <div style="display: flex; gap: 15px; margin-top: 20px;">

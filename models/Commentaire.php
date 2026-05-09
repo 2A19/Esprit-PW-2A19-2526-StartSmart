@@ -123,9 +123,13 @@ class Commentaire {
     }
 
     public function delete() {
+        require_once __DIR__ . '/Attachment.php';
+        $attachment = new Attachment($this->conn);
+        $this->id_commentaire = htmlspecialchars(strip_tags($this->id_commentaire));
+        $attachment->deleteByCommentId($this->id_commentaire);
+
         $query = "DELETE FROM " . $this->table_name . " WHERE id_commentaire = ?";
         $stmt = $this->conn->prepare($query);
-        $this->id_commentaire = htmlspecialchars(strip_tags($this->id_commentaire));
         $stmt->bindParam(1, $this->id_commentaire);
         return $stmt->execute();
     }

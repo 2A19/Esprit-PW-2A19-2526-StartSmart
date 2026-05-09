@@ -19,6 +19,7 @@ class ProjetController {
     private $categorieModel;
     private $projetService;
     private $competenceModel;
+    private $projet;
 
     public function __construct() {
         $database = new Database();

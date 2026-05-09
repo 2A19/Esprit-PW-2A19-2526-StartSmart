@@ -42,14 +42,15 @@ class MatchService {
                   FROM projet p
                   LEFT JOIN categorie c ON p.categorie_id = c.id
                   WHERE p.statut = 'actif' 
-                  AND p.auteur_id != :user_id
+                  AND p.auteur_id != :current_user_id
                   AND p.id NOT IN (
-                      SELECT projet_id FROM projet_reaction WHERE user_id = :user_id
+                      SELECT projet_id FROM projet_reaction WHERE user_id = :reaction_user_id
                   )
                   ORDER BY p.created_at DESC LIMIT 100";
                   
         $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        $stmt->bindParam(':current_user_id', $userId, PDO::PARAM_INT);
+        $stmt->bindParam(':reaction_user_id', $userId, PDO::PARAM_INT);
         $stmt->execute();
         $projets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

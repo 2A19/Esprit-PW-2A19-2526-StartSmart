@@ -162,13 +162,23 @@ class CommentaireController {
     public function addAsync() {
         requireLogin();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = json_decode(file_get_contents("php://input"));
-            
-            if (!empty($data->contenu) && !empty($data->post_id)) {
-                $this->commentaire->contenu = trim((string) $data->contenu);
+            $contentType = isset($_SERVER["CONTENT_TYPE"]) ? trim($_SERVER["CONTENT_TYPE"]) : '';
+            if (strpos($contentType, 'application/json') !== false) {
+                $data = json_decode(file_get_contents("php://input"));
+                $contenu = $data->contenu ?? '';
+                $post_id = $data->post_id ?? null;
+                $parent_id = $data->parent_id ?? null;
+            } else {
+                $contenu = $_POST['contenu'] ?? '';
+                $post_id = $_POST['post_id'] ?? null;
+                $parent_id = $_POST['parent_id'] ?? null;
+            }
+
+            if (!empty($contenu) && !empty($post_id)) {
+                $this->commentaire->contenu = trim((string) $contenu);
                 $this->commentaire->auteur_id = currentUserId();
-                $this->commentaire->post_id = (int) $data->post_id;
-                $this->commentaire->parent_id = !empty($data->parent_id) ? (int) $data->parent_id : null;
+                $this->commentaire->post_id = (int) $post_id;
+                $this->commentaire->parent_id = !empty($parent_id) ? (int) $parent_id : null;
 
                 if (mb_strlen($this->commentaire->contenu) < 2) {
                     http_response_code(422);
@@ -203,6 +213,25 @@ class CommentaireController {
                             }
                         }
                     } catch (Exception $e) { }
+
+                    $newCommentId = $this->db->lastInsertId();
+                    
+                    // Handle Attachments
+                    if (!empty($_FILES['attachments'])) {
+                        require_once 'services/FileService.php';
+                        require_once 'models/Attachment.php';
+                        $uploads = FileService::processUploads($_FILES['attachments']);
+                        $attachmentModel = new Attachment($this->db);
+                        foreach ($uploads as $fileData) {
+                            $attachmentModel->nom_fichier = $fileData['nom_fichier'];
+                            $attachmentModel->chemin_fichier = $fileData['chemin_fichier'];
+                            $attachmentModel->type_fichier = $fileData['type_fichier'];
+                            $attachmentModel->taille_fichier = $fileData['taille_fichier'];
+                            $attachmentModel->post_id = null;
+                            $attachmentModel->commentaire_id = $newCommentId;
+                            $attachmentModel->create();
+                        }
+                    }
 
                     header('Content-Type: application/json');
                     http_response_code(201);

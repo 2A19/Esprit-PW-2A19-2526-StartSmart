@@ -245,9 +245,13 @@ class Post {
     }
 
     public function delete() {
+        require_once __DIR__ . '/Attachment.php';
+        $attachment = new Attachment($this->conn);
+        $this->id_post = htmlspecialchars(strip_tags($this->id_post));
+        $attachment->deleteByPostId($this->id_post);
+
         $query = "DELETE FROM " . $this->table_name . " WHERE id_post = ?";
         $stmt = $this->conn->prepare($query);
-        $this->id_post = htmlspecialchars(strip_tags($this->id_post));
         $stmt->bindParam(1, $this->id_post);
         return $stmt->execute();
     }

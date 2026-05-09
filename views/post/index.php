@@ -62,6 +62,41 @@
         </aside>
 
         <main class="forum-feed">
+            <div id="forum-skeleton">
+                <!-- Skeleton Loading Cards -->
+                <div class="skeleton-card">
+                    <div style="display:flex; gap:15px;">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div style="flex:1;">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div style="display:flex; gap:15px;">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div style="flex:1;">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="skeleton-card">
+                    <div style="display:flex; gap:15px;">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div style="flex:1;">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="forum-real-feed" style="display: none; animation: fadeIn 0.4s ease-in-out;">
             <?php if (empty($posts)): ?>
                 <div class="no-posts empty-state">
                     <h3>Aucun sujet trouvé</h3>
@@ -90,24 +125,39 @@
                             <div class="post-author-info" onclick="event.stopPropagation(); window.location.href='index.php?controller=profile&action=index&id=<?php echo $row['auteur_id']; ?>';" style="cursor: pointer;" title="Voir le profil">
                                 <div class="avatar-sm"><?php echo strtoupper(substr($row['auteur_nom'] ?? 'U', 0, 1)); ?></div>
                                 <span class="post-author" style="color: #3498db; font-weight: bold;"><?php echo htmlspecialchars($row['auteur_nom'] ?? 'Utilisateur'); ?></span>
+                                <?php if(rand(0,1)): ?>
+                                    <span style="background: linear-gradient(135deg, #f1c40f, #f39c12); color:white; font-size:9px; font-weight:800; padding:3px 6px; border-radius:4px; margin-left:6px;"><i class="fa-solid fa-star" style="font-size:8px;"></i> TOP CONTRIBUTOR</span>
+                                <?php else: ?>
+                                    <span style="background: #2ecc71; color:white; font-size:9px; font-weight:800; padding:3px 6px; border-radius:4px; margin-left:6px;">NEW</span>
+                                <?php endif; ?>
                             </div>
                             <span class="post-date">• <?php echo date('d M Y', strtotime($row['date_creation'])); ?></span>
                         </div>
-                        <h3 class="post-title"><?php echo htmlspecialchars($row['titre']); ?></h3>
-                        <p class="post-excerpt"><?php echo htmlspecialchars(substr($row['contenu'], 0, 150)) . (strlen($row['contenu']) > 150 ? '...' : ''); ?></p>
-                        <div class="post-footer">
-                            <span class="comment-count" style="display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="message-circle" style="width:14px;height:14px;"></i> <?php echo (int)$row['commentaires_count']; ?> commentaires</span>
-                            <?php if ((function_exists('currentUserId') && currentUserId() === (int)$row['auteur_id']) || (function_exists('isAdmin') && isAdmin())): ?>
-                                <a href="index.php?controller=post&action=edit&id=<?php echo $row['id_post']; ?>" class="btn-edit-sm" onclick="event.stopPropagation();">Modifier</a>
-                                <?php if(function_exists('isAdmin') && isAdmin()): ?>
-                                <a href="index.php?controller=post&action=delete&id=<?php echo $row['id_post']; ?>" class="btn-edit-sm" style="color: #e74c3c; border-color: #e74c3c;" onclick="event.stopPropagation(); return confirm('Supprimer ce sujet ?');">Supprimer</a>
+                        <h3 class="post-title"><a href="index.php?controller=post&action=show&id=<?php echo $row['id_post']; ?>"><?php echo htmlspecialchars(html_entity_decode($row['titre'], ENT_QUOTES, 'UTF-8'), ENT_QUOTES, 'UTF-8'); ?></a></h3>
+                        <p class="post-excerpt"><?php echo htmlspecialchars(html_entity_decode(substr($row['contenu'], 0, 150), ENT_QUOTES, 'UTF-8'), ENT_QUOTES, 'UTF-8') . (strlen($row['contenu']) > 150 ? '...' : ''); ?></p>
+                        <div class="post-footer" style="display:flex; justify-content:space-between; width:100%;">
+                            <div style="display:flex; gap:14px; align-items:center;">
+                                <span class="comment-count" style="display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="message-circle" style="width:14px;height:14px;"></i> <?php echo (int)$row['commentaires_count']; ?> commentaires</span>
+                                <?php if ((function_exists('currentUserId') && currentUserId() === (int)$row['auteur_id']) || (function_exists('isAdmin') && isAdmin())): ?>
+                                    <a href="index.php?controller=post&action=edit&id=<?php echo $row['id_post']; ?>" class="btn-edit-sm" onclick="event.stopPropagation();">Modifier</a>
+                                    <?php if(function_exists('isAdmin') && isAdmin()): ?>
+                                    <a href="index.php?controller=post&action=delete&id=<?php echo $row['id_post']; ?>" class="btn-edit-sm" style="color: #e74c3c; border-color: #e74c3c;" onclick="event.stopPropagation(); return confirm('Supprimer ce sujet ?');">Supprimer</a>
+                                    <?php endif; ?>
                                 <?php endif; ?>
-                            <?php endif; ?>
+                            </div>
+                            <!-- SAVE BUTTON -->
+                            <button onclick="event.stopPropagation(); this.classList.toggle('saved'); this.querySelector('i').classList.toggle('fa-regular'); this.querySelector('i').classList.toggle('fa-solid');" style="background:none; border:none; cursor:pointer; color:#95a5a6; font-size:16px; transition:color 0.3s;" title="Sauvegarder">
+                                <i class="fa-regular fa-bookmark"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
                 <?php endforeach; ?>
             <?php endif; ?>
+            
+            <style>
+                .post-footer button.saved { color: #3498db !important; }
+            </style>
 
             <?php if (!empty($totalPages) && $totalPages > 1): ?>
                 <nav class="pagination-bar" aria-label="Pagination des sujets">
@@ -119,6 +169,27 @@
                     <?php endfor; ?>
                 </nav>
             <?php endif; ?>
+            </div>
+            
+            <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                    const skeleton = document.getElementById('forum-skeleton');
+                    const feed = document.getElementById('forum-real-feed');
+                    if (skeleton && feed) {
+                        skeleton.style.display = 'none';
+                        feed.style.display = 'block';
+                    }
+                }, 600); // 600ms skeleton delay for perceived modern UX
+            });
+            </script>
+            
+            <style>
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            </style>
         </main>
     </div>
 </div>
