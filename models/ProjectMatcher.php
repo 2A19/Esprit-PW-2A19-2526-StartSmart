@@ -51,7 +51,7 @@ class ProjectMatcher {
      */
     private function calculateSkillMatch($user_id, $projet_id) {
         // Get project required skills
-        $query_project = "SELECT COUNT(*) as count FROM project_skill WHERE projet_id = ? AND required = 1";
+        $query_project = "SELECT COUNT(*) as count FROM projet_competence WHERE projet_id = ?";
         $stmt = $this->conn->prepare($query_project);
         $stmt->execute([$projet_id]);
         $project_result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -64,10 +64,10 @@ class ProjectMatcher {
 
         // Get matching skills (user has project's required skills)
         $query_match = "
-            SELECT COUNT(DISTINCT ps.skill_id) as matched_count
-            FROM project_skill ps
-            INNER JOIN user_skill us ON ps.skill_id = us.skill_id
-            WHERE ps.projet_id = ? AND ps.required = 1 AND us.user_id = ?
+            SELECT COUNT(DISTINCT ps.competence_id) as matched_count
+            FROM projet_competence ps
+            INNER JOIN utilisateur_competence us ON ps.competence_id = us.competence_id
+            WHERE ps.projet_id = ? AND us.utilisateur_id = ?
         ";
         $stmt = $this->conn->prepare($query_match);
         $stmt->execute([$projet_id, $user_id]);
@@ -95,7 +95,7 @@ class ProjectMatcher {
         }
 
         // Check if user interested in this category
-        $query_interest = "SELECT interest_score FROM user_interest WHERE user_id = ? AND categorie_id = ?";
+        $query_interest = "SELECT 5 as interest_score FROM utilisateur_interet WHERE utilisateur_id = ? AND categorie_id = ?";
         $stmt = $this->conn->prepare($query_interest);
         $stmt->execute([$user_id, $project['categorie_id']]);
         $interest = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -207,12 +207,12 @@ class ProjectMatcher {
      */
     public function getMatchedSkills($user_id, $projet_id) {
         $query = "
-            SELECT DISTINCT s.id, s.name, s.category
-            FROM skill s
-            INNER JOIN user_skill us ON s.id = us.skill_id
-            INNER JOIN project_skill ps ON s.id = ps.skill_id
-            WHERE us.user_id = ? AND ps.projet_id = ?
-            ORDER BY s.name
+            SELECT DISTINCT s.id, s.nom as name, 'Général' as category
+            FROM competence s
+            INNER JOIN utilisateur_competence us ON s.id = us.competence_id
+            INNER JOIN projet_competence ps ON s.id = ps.competence_id
+            WHERE us.utilisateur_id = ? AND ps.projet_id = ?
+            ORDER BY s.nom
         ";
         $stmt = $this->conn->prepare($query);
         $stmt->execute([$user_id, $projet_id]);
@@ -224,11 +224,11 @@ class ProjectMatcher {
      */
     public function getRequiredSkills($projet_id) {
         $query = "
-            SELECT s.id, s.name, s.category, ps.required, ps.priority
-            FROM skill s
-            INNER JOIN project_skill ps ON s.id = ps.skill_id
-            WHERE ps.projet_id = ? AND ps.required = 1
-            ORDER BY ps.priority, s.name
+            SELECT s.id, s.nom as name, 'Général' as category, 1 as required, 1 as priority
+            FROM competence s
+            INNER JOIN projet_competence ps ON s.id = ps.competence_id
+            WHERE ps.projet_id = ?
+            ORDER BY s.nom
         ";
         $stmt = $this->conn->prepare($query);
         $stmt->execute([$projet_id]);
@@ -244,6 +244,35 @@ class ProjectMatcher {
                   ON DUPLICATE KEY UPDATE action = ?";
         $stmt = $this->conn->prepare($query);
         return $stmt->execute([$user_id, $projet_id, $action, $action]);
+    }
+
+    /**
+     * Get interested users for a project (Candidatures)
+     */
+    public function getInterestedUsers($projet_id) {
+        $query = "
+            SELECT 
+                u.id_utilisateur as id, u.nom,
+                uma.action, uma.created_at
+            FROM " . $this->action_table . " uma
+            JOIN utilisateur u ON uma.user_id = u.id_utilisateur
+            WHERE uma.projet_id = ? AND uma.action IN ('interested', 'accepted')
+            ORDER BY uma.created_at DESC
+        ";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$projet_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Accept or reject a candidate
+     */
+    public function updateActionStatus($user_id, $projet_id, $new_action) {
+        $query = "UPDATE " . $this->action_table . " 
+                  SET action = ? 
+                  WHERE user_id = ? AND projet_id = ?";
+        $stmt = $this->conn->prepare($query);
+        return $stmt->execute([$new_action, $user_id, $projet_id]);
     }
 
     /**

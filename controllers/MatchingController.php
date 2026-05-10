@@ -356,5 +356,85 @@ class MatchingController {
             'applied_projects' => $actions_count['applied'] ?? 0
         ]);
     }
+
+    /**
+     * GET /index.php?controller=matching&action=candidatures
+     * Show interested users for the logged in user's projects
+     */
+    public function candidatures() {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: index.php');
+            return;
+        }
+
+        $user_id = $_SESSION['user_id'];
+        
+        // Get all projects owned by the user
+        $my_projects = $this->projet->readAll("", $user_id);
+        
+        // For each project, fetch interested users
+        $project_candidatures = [];
+        foreach ($my_projects as $p) {
+            $interested = $this->matcher->getInterestedUsers($p['id']);
+            if (!empty($interested)) {
+                $project_candidatures[] = [
+                    'project' => $p,
+                    'candidates' => $interested
+                ];
+            }
+        }
+
+        $pageTitle = "Candidatures Reçues";
+        ob_start();
+        require_once 'views/projet/candidatures.php';
+        $viewContent = ob_get_clean();
+        require_once 'views/layout.php';
+    }
+
+    /**
+     * POST /index.php?controller=matching&action=acceptCandidate
+     * Accept a candidate and initialize chat
+     */
+    public function acceptCandidate() {
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Non autorisé']);
+            return;
+        }
+
+        $data = json_decode(file_get_contents('php://input'), true);
+        $candidate_id = isset($data['candidate_id']) ? (int)$data['candidate_id'] : 0;
+        $projet_id = isset($data['projet_id']) ? (int)$data['projet_id'] : 0;
+
+        if (!$candidate_id || !$projet_id) {
+            echo json_encode(['success' => false, 'message' => 'Données incomplètes']);
+            return;
+        }
+
+        // Verify that the logged in user actually owns this project
+        $this->projet->id = $projet_id;
+        $projectExists = $this->projet->readOne();
+        if (!$projectExists || $this->projet->auteur_id != $_SESSION['user_id']) {
+            echo json_encode(['success' => false, 'message' => 'Non autorisé pour ce projet']);
+            return;
+        }
+
+        // Update status to 'accepted'
+        $result = $this->matcher->updateActionStatus($candidate_id, $projet_id, 'accepted');
+
+        if ($result) {
+            // Auto-create a welcome message so the conversation appears in the inbox
+            require_once 'models/Message.php';
+            $msg = new Message($this->db);
+            $msg->sender_id = $_SESSION['user_id'];
+            $msg->receiver_id = $candidate_id;
+            $msg->projet_id = $projet_id;
+            $msg->content = "👋 J'ai accepté votre candidature pour mon projet ! Nous pouvons maintenant discuter des détails.";
+            $msg->sendMessage();
+
+            echo json_encode(['success' => true, 'message' => 'Candidat accepté!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Erreur lors de l\'acceptation']);
+        }
+    }
 }
 ?>

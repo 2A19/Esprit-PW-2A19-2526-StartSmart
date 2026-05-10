@@ -29,6 +29,25 @@ if ($controller === 'posts') $controller = 'post';
 if ($controller === 'comments') $controller = 'commentaire';
 
 if ($controller == 'home') {
+    try {
+        $database = new Database();
+        $db = $database->getConnection();
+        require_once 'models/Projet.php';
+        require_once 'models/Competence.php';
+        
+        $projetModel = new Projet($db);
+        $currentUserId = function_exists('currentUserId') ? currentUserId() : null;
+        $latestProjetsStmt = $projetModel->readAll("", null, "latest", $currentUserId, 3, 0);
+        $latestProjets = $latestProjetsStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $competenceModel = new Competence($db);
+        foreach ($latestProjets as &$projetRow) {
+            $projetRow['competences'] = $competenceModel->getProjectCompetences($projetRow['id']);
+        }
+    } catch (Exception $e) {
+        $latestProjets = [];
+    }
+
     ob_start();
     require_once 'views/home.php';
     $viewContent = ob_get_clean();

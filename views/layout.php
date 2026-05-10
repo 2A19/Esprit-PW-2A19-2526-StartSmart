@@ -184,11 +184,13 @@
 
     /* ── Dropdown ── */
     .dropdown { position: relative; }
+    .dropdown::after { content:''; position:absolute; bottom:-10px; left:0; width:100%; height:10px; }
     .dropbtn { cursor: pointer; }
     .dropdown-content {
         display: none;
         position: absolute;
-        top: calc(100% + 8px);
+        top: 100%;
+        margin-top: 5px;
         left: 50%;
         transform: translateX(-50%);
         min-width: 200px;
@@ -367,9 +369,22 @@
         <a href="index.php?controller=projet&action=index" class="nav-btn <?php echo (isset($_GET['controller']) && $_GET['controller']==='projet') ? 'active' : ''; ?>">
             Startups
         </a>
-        <a href="index.php?controller=matching&action=discover" class="nav-btn nav-discover">
-            Découvrir <i class="fa-solid fa-fire" style="font-size:13px;"></i>
-        </a>
+        <div class="dropdown">
+            <a href="#" class="nav-btn dropbtn nav-discover <?php echo (isset($_GET['controller']) && $_GET['controller']==='matching') ? 'active' : ''; ?>">
+                Match <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+            </a>
+            <div class="dropdown-content">
+                <a href="index.php?controller=matching&action=discover">
+                    <i class="fa-solid fa-fire" style="margin-right:8px;color:#e74c3c;"></i>Découvrir (Swipe)
+                </a>
+                <a href="index.php?controller=matching&action=recommend">
+                    <i class="fa-solid fa-list" style="margin-right:8px;color:var(--blue-dark);"></i>Vue Liste
+                </a>
+                <a href="index.php?controller=matching&action=candidatures">
+                    <i class="fa-solid fa-users" style="margin-right:8px;color:var(--green-dark);"></i>Candidatures
+                </a>
+            </div>
+        </div>
         <a href="index.php?controller=map&action=index" class="nav-btn nav-map">
             <i class="fa-solid fa-globe" style="font-size:13px;"></i> Map
         </a>
@@ -393,6 +408,9 @@
         </div>
 
         <?php if(function_exists('isLoggedIn') && isLoggedIn()): ?>
+            <a href="index.php?controller=message&action=index" class="nav-btn" style="color: var(--navy); font-weight: 600;">
+                <i class="fa-regular fa-message"></i> Messagerie
+            </a>
             <?php if (file_exists(__DIR__ . '/partials/notifications.php')) include __DIR__ . '/partials/notifications.php'; ?>
             <a href="index.php?controller=profile&action=index" class="btn-get-started" style="margin-left:6px;">
                 <i class="fa-regular fa-user"></i> Mon Profil

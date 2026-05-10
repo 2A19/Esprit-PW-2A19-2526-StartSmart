@@ -575,73 +575,74 @@ section { padding: 100px 5%; }
 </section>
 
 <!-- ==============================================
-     5. DASHBOARD PREVIEW
+     5. LATEST PROJECTS PREVIEW
 =============================================== -->
-<section class="dash-preview">
-    <div class="dash-preview-content">
-        <div class="dash-eyebrow">TABLEAU DE BORD</div>
-        <h2 class="dash-title">Votre espace <span>personnel</span></h2>
-        <p class="dash-sub">Suivez vos projets, collaborations et notifications depuis un dashboard épuré et professionnel.</p>
-        
-        <div class="dash-mockup">
-            <!-- Sidebar mock -->
-            <div class="dm-sidebar">
-                <div class="dm-logo">
-                    <div class="icon">SS</div> StartSmart
-                </div>
-                <div class="dm-nav">
-                    <div class="dm-nav-item active"><i class="fa-solid fa-house"></i> Accueil</div>
-                    <div class="dm-nav-item"><i class="fa-solid fa-rocket"></i> Mes Projets</div>
-                    <div class="dm-nav-item"><i class="fa-solid fa-users"></i> Collaborations</div>
-                    <div class="dm-nav-item"><i class="fa-solid fa-bell"></i> Notifications <span style="background:var(--green); color:white; font-size:9px; padding:2px 6px; border-radius:99px; margin-left:auto;">3</span></div>
-                    <div class="dm-nav-item"><i class="fa-solid fa-robot"></i> Matching IA</div>
-                    <div class="dm-nav-item"><i class="fa-regular fa-user"></i> Mon Profil</div>
-                </div>
+<section class="latest-projects-preview" style="padding: 100px 5%; background: var(--navy); color: white; position: relative; overflow: hidden;">
+    <div class="dash-preview-content" style="position: relative; z-index: 2; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; align-items: center;">
+        <div class="dash-eyebrow" style="font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--blue); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 2px; background: var(--blue);"></div>
+            STARTUPS RÉCENTES
+        </div>
+        <h2 class="dash-title" style="font-family: var(--font-display); font-size: 42px; font-weight: 800; margin-bottom: 16px; text-align: center;">Découvrez nos <span>derniers projets</span></h2>
+        <p class="dash-sub" style="font-size: 16px; color: rgba(255,255,255,0.7); max-width: 500px; text-align: center; margin-bottom: 50px; line-height: 1.6;">
+            Explorez les startups nouvellement créées sur la plateforme par nos brillants étudiants.
+        </p>
+
+        <?php if (!empty($latestProjets)): ?>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; width: 100%; max-width: 1100px; margin-bottom: 40px;">
+                <?php foreach ($latestProjets as $row): ?>
+                    <div class="card card-elevated" onclick="window.location.href='index.php?controller=projet&action=show&id=<?php echo $row['id']; ?>'" style="text-align: left; cursor: pointer; display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s;">
+                        <div style="padding: 24px; display: flex; flex-direction: column; flex-grow: 1;">
+                            <span style="background: rgba(2, 136, 209, 0.1); color: var(--blue-dark); margin-bottom: 15px; width: fit-content; text-transform: uppercase; font-weight: 800; font-size: 11px; padding: 6px 12px; border-radius: 6px; letter-spacing: 0.5px;"><?php echo htmlspecialchars($row['categorie_nom'] ?? 'Sans catégorie'); ?></span>
+                            
+                            <a href="index.php?controller=projet&action=show&id=<?php echo $row['id']; ?>" style="font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--navy); text-decoration: none; margin-bottom: 12px; line-height: 1.3; overflow-wrap: break-word; word-break: break-word;" onclick="event.stopPropagation();">
+                                <?php echo htmlspecialchars($row['nomprojet']); ?>
+                            </a>
+                            
+                            <p style="font-size: 14px; color: var(--gray-600); line-height: 1.6; margin-bottom: 20px; flex-grow: 1; overflow-wrap: break-word; word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+                                <?php echo htmlspecialchars(substr($row['description'] ?? 'Aucune description', 0, 100)) . (strlen($row['description'] ?? '') > 100 ? '...' : ''); ?>
+                            </p>
+
+                            <?php if (!empty($row['competences'])): ?>
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px;">
+                                    <?php foreach (array_slice($row['competences'], 0, 3) as $comp): ?>
+                                        <span style="background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-200); border-radius: 6px; font-size: 11px; padding: 4px 10px; font-weight: 600;">
+                                            <?php echo htmlspecialchars(is_array($comp) ? ($comp['nom'] ?? '') : $comp); ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                    <?php if (count($row['competences']) > 3): ?>
+                                        <span style="background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-200); border-radius: 6px; font-size: 11px; padding: 4px 6px; font-weight: 600;">+<?php echo count($row['competences']) - 3; ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--gray-100); padding-top: 16px;">
+                                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(46,204,113,0.1); color: var(--green-dark); padding: 6px 12px; border-radius: 99px; font-weight: 700; font-size: 12px;">
+                                    💰 <?php echo htmlspecialchars($row['budget']); ?> DT
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--navy);" title="Auteur du projet">
+                                    <span style="background: var(--blue-light); color: var(--blue-dark); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px;">
+                                        <?php echo strtoupper(substr($row['auteur_nom'] ?? 'U', 0, 1)); ?>
+                                    </span>
+                                    <?php echo htmlspecialchars($row['auteur_nom'] ?? 'Utilisateur'); ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             </div>
             
-            <!-- Main mock -->
-            <div class="dm-main">
-                <div class="dm-stats">
-                    <div class="dm-stat-box">
-                        <div class="dm-stat-label">MES PROJETS</div>
-                        <div class="dm-stat-val">4</div>
-                        <div class="dm-stat-trend"><i class="fa-solid fa-arrow-up"></i> +1 ce mois</div>
-                    </div>
-                    <div class="dm-stat-box">
-                        <div class="dm-stat-label">COLLABORATEURS</div>
-                        <div class="dm-stat-val">12</div>
-                        <div class="dm-stat-trend"><i class="fa-solid fa-arrow-up"></i> +3 actifs</div>
-                    </div>
-                    <div class="dm-stat-box">
-                        <div class="dm-stat-label">SCORE MATCHING</div>
-                        <div class="dm-stat-val">87%</div>
-                        <div class="dm-stat-trend"><i class="fa-solid fa-arrow-up"></i> Top 15%</div>
-                    </div>
-                </div>
-                
-                <div class="dm-list-title">PROJETS RÉCENTS</div>
-                <div class="dm-list-item" onclick="window.location.href='index.php?controller=projet&action=catalog'">
-                    <div class="dm-li-left">
-                        <div class="dm-li-icon"><i class="fa-solid fa-rocket"></i></div>
-                        <div class="dm-li-info">
-                            <h4>EcoDelivery Platform</h4>
-                            <p>Mis à jour il y a 2h · 4 membres</p>
-                        </div>
-                    </div>
-                    <div class="dm-li-badge">ACTIF</div>
-                </div>
-                <div class="dm-list-item" onclick="window.location.href='index.php?controller=projet&action=catalog'">
-                    <div class="dm-li-left">
-                        <div class="dm-li-icon blue"><i class="fa-solid fa-robot"></i></div>
-                        <div class="dm-li-info">
-                            <h4>HealthAI Assistant</h4>
-                            <p>Mis à jour hier · 2 membres</p>
-                        </div>
-                    </div>
-                    <div class="dm-li-badge revue">EN REVUE</div>
-                </div>
+            <a href="index.php?controller=projet&action=index" class="btn btn-primary" style="padding: 14px 28px; font-weight: 600; font-size: 15px; border-radius: 99px; display: inline-flex; align-items: center; gap: 8px;">
+                Voir toutes les startups <i class="fa-solid fa-arrow-right"></i>
+            </a>
+        <?php else: ?>
+            <div style="background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2); border-radius: 12px; padding: 40px; text-align: center; width: 100%; max-width: 600px;">
+                <div style="font-size: 40px; margin-bottom: 15px;">🚀</div>
+                <h3 style="margin-bottom: 10px; font-family: var(--font-display); color: white;">Aucun projet pour le moment</h3>
+                <p style="color: rgba(255,255,255,0.6); margin-bottom: 20px;">Soyez le premier à lancer votre startup sur StartSmart.</p>
+                <a href="index.php?controller=projet&action=create" class="btn btn-primary">Créer un projet</a>
             </div>
-        </div>
+        <?php endif; ?>
     </div>
 </section>
 

@@ -164,11 +164,16 @@ class ProjetController {
             $this->projetModel->city = $_POST['city'] ?? '';
             $this->projetModel->country = $_POST['country'] ?? '';
             
-            // Generate some random coordinates if missing for demo purposes, since the form only asks for city/country
+            // Fetch real coordinates using Nominatim API instead of randomizing
             if (empty($_POST['latitude']) || empty($_POST['longitude'])) {
-                // Approximate random global coordinates for demo purposes
-                $this->projetModel->latitude = (mt_rand(-5000, 5000) / 100);
-                $this->projetModel->longitude = (mt_rand(-18000, 18000) / 100);
+                $coords = $this->geocodeLocation($this->projetModel->city, $this->projetModel->country);
+                if ($coords) {
+                    $this->projetModel->latitude = $coords['lat'];
+                    $this->projetModel->longitude = $coords['lng'];
+                } else {
+                    $this->projetModel->latitude = 0;
+                    $this->projetModel->longitude = 0;
+                }
             } else {
                 $this->projetModel->latitude = $_POST['latitude'];
                 $this->projetModel->longitude = $_POST['longitude'];
@@ -273,6 +278,37 @@ class ProjetController {
             http_response_code(500);
             exit('Erreur lors de la suppression.');
         }
+    }
+    private function geocodeLocation($city, $country) {
+        $query = urlencode($city . ', ' . $country);
+        $url = "https://nominatim.openstreetmap.org/search?q={$query}&format=json&limit=1";
+        
+        $options = [
+            "http" => [
+                "header" => "User-Agent: StartSmartApp/1.0\r\n"
+            ]
+        ];
+        $context = stream_context_create($options);
+        $result = @file_get_contents($url, false, $context);
+        
+        if ($result) {
+            $data = json_decode($result, true);
+            if (!empty($data) && isset($data[0]['lat']) && isset($data[0]['lon'])) {
+                return ['lat' => $data[0]['lat'], 'lng' => $data[0]['lon']];
+            }
+        }
+        
+        // Fallback to just city
+        $query = urlencode($city);
+        $url = "https://nominatim.openstreetmap.org/search?q={$query}&format=json&limit=1";
+        $result = @file_get_contents($url, false, $context);
+        if ($result) {
+            $data = json_decode($result, true);
+            if (!empty($data) && isset($data[0]['lat']) && isset($data[0]['lon'])) {
+                return ['lat' => $data[0]['lat'], 'lng' => $data[0]['lon']];
+            }
+        }
+        return false;
     }
 }
 ?>

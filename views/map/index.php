@@ -282,13 +282,13 @@
     };
 
     function getCategoryColor(category) {
-        if (!category) return '#ecf0f1';
+        if (!category) return '#7f8c8d';
         for (let key in colorMap) {
             if (category.toLowerCase().includes(key.toLowerCase())) {
                 return colorMap[key];
             }
         }
-        return '#ecf0f1'; 
+        return '#7f8c8d'; 
     }
 
     // Initialize Globe

@@ -242,12 +242,32 @@ button { font-family: var(--font-body); cursor: pointer; }
    CARDS
    ============================================================ */
 .card {
-  background: var(--white);
+  background: transparent;
   border-radius: var(--radius-lg);
   border: 1px solid var(--gray-200);
   padding: 24px;
   transition: all var(--transition-slow);
   position: relative;
+  z-index: 1;
+}
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--white);
+  border-radius: inherit;
+  z-index: -1;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: var(--grad-primary);
+  filter: blur(12px);
+  opacity: 0;
+  transition: opacity var(--transition-slow);
+  z-index: -2;
 }
 .card-hover:hover {
   transform: translateY(-6px);
@@ -255,18 +275,7 @@ button { font-family: var(--font-body); cursor: pointer; }
   border-color: rgba(79,195,247,0.35);
 }
 .card-hover:hover::before {
-  opacity: 1;
-}
-.card::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: calc(var(--radius-lg) + 1px);
-  background: var(--grad-accent);
-  opacity: 0;
-  transition: opacity var(--transition);
-  z-index: -1;
-  filter: blur(8px);
+  opacity: 0.5;
 }
 .card-interactive { cursor: pointer; }
 .card-flat { box-shadow: none; border: 1px solid var(--gray-200); }

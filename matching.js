@@ -19,7 +19,7 @@ function recordAction(projectId, action) {
             }
             setTimeout(() => {
                 location.reload();
-            }, 1000);
+            }, 300); // reduced timeout for snappier feeling after swipe
         } else {
             showNotification(data.message || 'Erreur', 'error');
         }
@@ -36,6 +36,11 @@ function recordAction(projectId, action) {
 function skipProject() {
     const card = document.getElementById('swipeCard');
     if (card) {
+        // Animate swiping left
+        card.style.transition = "transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-out";
+        card.style.transform = "translateX(-150%) rotate(-15deg)";
+        card.style.opacity = "0";
+        
         const projectId = card.dataset.projectId;
         recordAction(projectId, 'skipped');
     }
@@ -47,6 +52,11 @@ function skipProject() {
 function interestedProject() {
     const card = document.getElementById('swipeCard');
     if (card) {
+        // Animate swiping right
+        card.style.transition = "transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-out";
+        card.style.transform = "translateX(150%) rotate(15deg)";
+        card.style.opacity = "0";
+        
         const projectId = card.dataset.projectId;
         recordAction(projectId, 'interested');
     }
