@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 60" width="250" height="60">
+    <defs>
+        <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4FC3F7"/>
+            <stop offset="100%" stop-color="#0288D1"/>
+        </linearGradient>
+        <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0"/>
+        </linearGradient>
+    </defs>
+    
+    <!-- Modern Icon Box with subtle inner glow/shine -->
+    <rect x="0" y="5" width="50" height="50" rx="14" fill="url(#blueGrad)"/>
+    <path d="M 0 20 C 20 5 40 5 50 15 L 50 5 C 50 5 40 0 25 0 C 10 0 0 5 0 5 Z" fill="url(#shine)"/>
+    <rect x="0" y="5" width="50" height="50" rx="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+
+    <!-- The stretched 'ss' in white -->
+    <g transform="translate(25, 41) scale(2.2, 0.95)">
+        <text x="0" y="0" font-family="'Arial Black', Impact, sans-serif" font-size="26" font-weight="900" fill="white" text-anchor="middle" letter-spacing="-2.5">ss</text>
+    </g>
+
+    <!-- StartSmart Text -->
+    <text x="60" y="42" font-family="'Syne', 'Segoe UI', Arial, sans-serif" font-size="34" font-weight="800" fill="#0B1C48" letter-spacing="-1.2">
+        Start<tspan fill="#0288D1">Smart</tspan>
+    </text>
+</svg>
