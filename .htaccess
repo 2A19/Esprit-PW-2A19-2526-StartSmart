@@ -1,0 +1,18 @@
+RewriteEngine On
+RewriteBase /StartSmartIntegrated/
+
+# Serve login.php directly (bypass rewrite)
+RewriteRule ^login\.php$ - [L]
+
+# Serve the concrete API front controller directly.
+RewriteRule ^api/index\.php$ - [L]
+
+# Route pretty /api/ URLs to api/index.php.
+RewriteRule ^api/(.*)$ api/index.php?path=$1 [QSA,L]
+
+# Ignore if it's an existing file or directory (like css, js, images)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route everything else to index.php
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]

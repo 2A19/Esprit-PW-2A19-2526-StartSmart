@@ -1,0 +1,13 @@
+<?php
+/**
+ * Copy this file to database.local.php (same folder) and adjust.
+ * database.local.php is optional; values override env and defaults.
+ */
+return [
+    'host' => 'localhost',
+    'port' => 3306,
+    // If you imported database/startsmartrh.sql as-is, it created DB "startsmart":
+    'database' => 'startsmart',
+    'username' => 'root',
+    'password' => '',
+];
